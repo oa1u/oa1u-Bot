@@ -32,11 +32,19 @@ module.exports = {
 
         // Human verification
         const captcha = new CaptchaGenerator()
-            .setDimension(400, 150)
-            .setBackground();
+            .setDimension(600, 600)
+            .setCaptcha({ 
+                text: Math.random().toString(36).substring(2, 8).toUpperCase(), 
+                size: 70, 
+                color: "#32CD32" 
+            })
+            .setDecoy({ opacity: 0.2 })
+            .setTrace({ color: "#32CD32", size: 2 });
 
         const captchaBuffer = await captcha.generate();
         const captchaCode = captcha.text;
+        
+        console.log(`Generated captcha for ${member.user.tag}: ${captchaCode}`);
 
         if (!captchachannel) {
             return member.send(`${xEmoji} Sorry, the verification system failed. Please contact an Administrator ASAP.`).catch(() => {});
@@ -50,18 +58,20 @@ module.exports = {
             const Server = member.guild.name;
 
             const e0 = new EmbedBuilder()
-                .setTitle(`Verification`)
+                .setTitle(`🔐 Verification Required`)
+                .setColor(Color)
                 .setFooter({ text: `${Version}` });
 
             const e1 = new EmbedBuilder(e0)
-                .setDescription(`Welcome To **${Server}**!\nPlease make sure you enter the captcha code below successfully to get access to **${Server}**!`)
+                .setDescription(`Welcome to **${Server}**!\n\n✅ **Please enter the captcha code shown below to gain access to the server.**`)
                 .addFields(
-                    { name: `**Why did you receive this?**`, value: `You have received this CAPTCHA as part of our verification process to confirm that you are not an automated bot and to help protect our servers from malicious activity.\nPlease ensure that you enter the CAPTCHA code in this conversation.` },
-                    { name: `**Error**`, value: `If you are unable to read the image, please navigate to the verification channel designated by the server administrators and run the /verify command` }
-                );
+                    { name: `📋 Why did you receive this?`, value: `You have received this CAPTCHA as part of our verification process to confirm that you are not an automated bot and to help protect our servers from malicious activity.\n\n**Please enter the CAPTCHA code in this conversation.**`, inline: false },
+                    { name: `⚠️ Need Help?`, value: `If you are unable to read the image, please navigate to the verification channel and run the \`/verify\` command to get a new captcha.`, inline: false }
+                )
+                .setTimestamp();
 
-            const e2 = new EmbedBuilder(e0).setDescription(`You've entered the captcha incorrectly.`);
-            const e3 = new EmbedBuilder(e0).setDescription(`You have successfully verified your identity in ${Server} and have been assigned the <@${roleID}> role.\nYou now have full access to the server.`);
+            const e2 = new EmbedBuilder(e0).setDescription(`❌ **Incorrect captcha code.**\n\nPlease try again by entering the correct code from the image above.`);
+            const e3 = new EmbedBuilder(e0).setDescription(`✅ **Verification Successful!**\n\nYou have successfully verified your identity in **${Server}** and have been assigned the <@&${roleID}> role.\n\n🎉 You now have full access to the server!`).setColor("#00FF00");
 
             userCaptchaData[member.id] = { captchaValue: captchaCode };
 
@@ -81,13 +91,19 @@ module.exports = {
             });
 
             const filter = m => {
-                if (m.author.bot) return;
-                if (m.author.id === member.id && String(m.content).toUpperCase() === String(userCaptchaData[member.id].captchaValue).toUpperCase()) {
-                    return true;
-                } else {
-                    m.channel.send({ embeds: [e2] });
-                    return false;
+                if (m.author.bot) return false;
+                if (m.author.id === member.id) {
+                    const userInput = String(m.content).toUpperCase().trim();
+                    const correctCode = String(userCaptchaData[member.id].captchaValue).toUpperCase().trim();
+                    console.log(`User ${member.user.tag} entered: "${userInput}", Expected: "${correctCode}"`);
+                    if (userInput === correctCode) {
+                        return true;
+                    } else {
+                        m.channel.send({ embeds: [e2] }).catch(err => console.error('Error sending incorrect message:', err));
+                        return false;
+                    }
                 }
+                return false;
             };
 
             dmChannel.awaitMessages({
@@ -96,11 +112,14 @@ module.exports = {
                 time: 600000,
             }).then(async response => {
                 try {
+                    console.log(`Response received for ${member.user.tag}, size: ${response.size}`);
                     if (response && response.size > 0) {
                         const roleObj = member.guild.roles.cache.get(roleID);
+                        console.log(`Role found: ${roleObj ? roleObj.name : 'NULL'}`);
                         if (roleObj) {
-                            await dmChannel.send({ embeds: [e3] });
                             await member.roles.add(roleObj);
+                            console.log(`Role added to ${member.user.tag}`);
+                            await dmChannel.send({ embeds: [e3] });
 
                             // Create welcome canvas
                             const canvas = new Canvas(700, 250);
@@ -164,6 +183,3 @@ module.exports = {
         }
     }
 };
-
-
-
