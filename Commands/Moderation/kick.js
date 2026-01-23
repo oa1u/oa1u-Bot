@@ -52,7 +52,7 @@ module.exports = {
         .setDescription(`You can't kick that user due to role hierarchy`);
     
     const server = interaction.client.guilds.cache.get(serverID);
-    if(!interaction.member.roles.cache.has(staffrole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
+    if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     
     if (!toWarnMember) return interaction.reply({ embeds: [validuser], flags: MessageFlags.Ephemeral });
     

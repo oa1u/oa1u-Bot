@@ -3,7 +3,7 @@ const { MessageFlags } = require('discord.js');
 const moment = require("moment");
 const JSONDatabase = require('../../Functions/Database');
 require("moment-duration-format");
-const { staffrole } = require("../../Config/constants/roles.json");
+const { ModRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json");
 const { Color } = require("../../Config/constants/misc.json");
 
@@ -53,7 +53,7 @@ module.exports = {
 
     const warnsDB = new JSONDatabase('warns');
     
-    if (!moderator.roles.cache.has(staffrole)) {
+    if (!moderator.roles.cache.has(ModRole)) {
       return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     }
 
@@ -89,11 +89,11 @@ module.exports = {
       .setTitle(`Case - ${caseID}`)
       .setColor(colorInt)
       .addFields(
-        { name: "Member", value: `${toWarn.tag} (${toWarn.id})` },
-        { name: "Moderator", value: `${moderator.user.tag} (${moderator.id})` },
+        { name: "Member", value: `${toWarn.username} (${toWarn.id})` },
+        { name: "Moderator", value: `${moderator.user.username} (${moderator.id})` },
         { name: "Reason", value: `\`(banned) - ${reason}\`` }
       )
-      .setFooter({ text: `By: ${moderator.user.tag} (${moderator.id})` })
+      .setFooter({ text: `By: ${moderator.user.username} (${moderator.id})` })
       .setTimestamp();
 
     if (warnLogs) await warnLogs.send({ embeds: [em] });
@@ -111,7 +111,7 @@ module.exports = {
     await toWarn.send({ embeds: [emUser] }).catch(err => console.error(err));
 
     const emChan = new EmbedBuilder()
-      .setDescription(`You have successfully banned **${toWarn.tag}**.`)
+      .setDescription(`You have successfully banned **${toWarn.username}**.`)
       .setColor(colorInt)
       .setTimestamp();
 
@@ -123,7 +123,7 @@ module.exports = {
     try {
       await server.members.ban(toWarn, { reason: reason });
     } catch (err) {
-      console.error(`Error banning ${toWarn.tag}:`, err);
+      console.error(`Error banning ${toWarn.username}:`, err);
     }
   }
 };

@@ -3,7 +3,7 @@ const JSONDatabase = require('../../Functions/Database');
 require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const { staffrole } = require("../../Config/constants/roles.json");
+const { ModRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
 const { Color, serverID } = require("../../Config/constants/misc.json")
 
@@ -51,7 +51,7 @@ module.exports = {
         .setDescription(`You can't warn that user due to role hierarchy`);
     
     const server = interaction.client.guilds.cache.get(serverID);
-    if(!interaction.member.roles.cache.has(staffrole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
+    if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     
     const toWarnMember = await interaction.guild.members.fetch(toWarn.id).catch(() => null);
     const moderator = interaction.member;
@@ -81,11 +81,11 @@ module.exports = {
       .setTitle(`Case - ${caseID}`)
       .setColor(colorInt)
       .addFields(
-        { name: "Member", value: `${toWarn.tag} (${toWarn.id})` },
-        { name: "Moderator", value: `${moderator.user.tag} (${moderator.id})` },
+        { name: "Member", value: `${toWarn.username} (${toWarn.id})` },
+        { name: "Moderator", value: `${moderator.user.username} (${moderator.id})` },
         { name: "Reason", value: `\`(warned) - ${finalReason}\`` }
       )
-      .setFooter({ text: `By: ${moderator.user.tag} (${moderator.id})` });
+      .setFooter({ text: `By: ${moderator.user.username} (${moderator.id})` });
     
     await warnLogs.send({ embeds: [em] });
     

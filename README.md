@@ -12,6 +12,8 @@ Run the command registration script:
 
 node register-command.js
 
+npm install
+
 
 Start the bot:
 
@@ -36,11 +38,24 @@ Improve the verification system (currently buggy (somewhat))
 
 Possibly add some fun commands
 
+Checkban command (by case id)
+
+Add verify command
+
+Update embeds since most of them look ugly and shit
+
+Add comment lines in most places so you know what i was trying to do or how it works etc
+
+fix the constant names since its going to confuse myself in the future or going to annoy others
+
+And format readme.md to make it look a bit prettier
+
+
 🐞 Known Issues
 
 Closing a ticket using the ❌ (X) emoji does not work
 
-Logging system is not functioning correctly
+most of the logging system is not functioning correctly
 
 🧩 Support & Issues
 

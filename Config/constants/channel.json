@@ -2,14 +2,13 @@
     "channelLog": "",
     "Announcement": "",
     "suggestchannel": "",
-    "welcomeleave": "",
+    "welcomeChannel": "",
+    "leaveChannel": "",
     "membercount": "",
     "ticketCategory": "",
     "jointocreatechannel": "",
     "jointocreatecategory": "",
     "unverifiedchannel": "",
-    "queuechannel": "",
     "verificationchannel": "",
-    "captchalogchannel": "",
-    "serverchannelrules": ""
+    "captchalogchannel": ""
 }

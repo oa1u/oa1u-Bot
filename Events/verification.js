@@ -1,5 +1,5 @@
 const fs = require('fs');
-const Canvas = require('canvas');
+const { Canvas } = require('skia-canvas');
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const path = require('path');
 const { CaptchaGenerator } = require("captcha-canvas");
@@ -103,7 +103,7 @@ module.exports = {
                             await member.roles.add(roleObj);
 
                             // Create welcome canvas
-                            const canvas = Canvas.createCanvas(700, 250);
+                            const canvas = new Canvas(700, 250);
                             const ctx = canvas.getContext('2d');
                             const bgPath = path.join(__dirname, '../Images/background.png');
                             console.log('Verification background path:', bgPath);
@@ -125,10 +125,10 @@ module.exports = {
                             ctx.closePath();
                             ctx.clip();
 
-                            const avatar = await Canvas.loadImage(member.user.displayAvatarURL({ forceStatic: false }));
+                            const avatar = await Canvas.loadImage(member.user.displayAvatarURL());
                             ctx.drawImage(avatar, 25, 25, 200, 200);
 
-                            const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'welcome-image.png' });
+                            const attachment = new AttachmentBuilder(await canvas.toBuffer('png'), { name: 'welcome-image.png' });
 
                             if (welcomeChannelObj) {
                                 welcomeChannelObj.send({ 
@@ -141,13 +141,13 @@ module.exports = {
                             const CaptchaLog = new EmbedBuilder()
                                 .setTitle(`New Member Verified`)
                                 .addFields(
-                                    { name: `**User:**`, value: `${member.user.tag}` },
+                                    { name: `**User:**`, value: `${member.user.username}` },
                                     { name: `**Joined Server at:**`, value: `${member.joinedAt.toDateString()}` },
                                     { name: `**Account Creation:**`, value: `${member.user.createdAt.toDateString()}` },
                                     { name: `**Captcha Code:**`, value: `${userCaptchaData[member.id].captchaValue}` },
                                     { name: `**Role Given:**`, value: `${roleObj}` }
                                 )
-                                .setColor(parseInt(Color.replace('#', ''), 16));
+                                .setColor(Color);
 
                             if (captchachannel) captchachannel.send({ embeds: [CaptchaLog] });
                         }

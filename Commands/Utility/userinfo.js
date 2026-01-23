@@ -37,11 +37,11 @@ module.exports = {
     
     if (member) {
       const em = new EmbedBuilder()
-        .setAuthor({ name: `${member.displayName}'s information`, iconURL: member.user.displayAvatarURL({ format: 'png', dynamic: true }) })
-        .setThumbnail(member.user.displayAvatarURL({ format: 'png', dynamic: true }))
+        .setAuthor({ name: `${member.displayName}'s information`, iconURL: member.user.displayAvatarURL() })
+        .setThumbnail(member.user.displayAvatarURL())
         .addFields(
           { name: "Username", value: member.user.username, inline: true },
-          { name: "Tag", value: member.user.tag, inline: true },
+          { name: "ID", value: member.user.id, inline: true },
           { name: `Created At [${moment(member.user.createdTimestamp).fromNow()}]`, value: moment(member.user.createdTimestamp).format('LLL') },
           { name: `Joined Server At [${moment(member.joinedTimestamp).fromNow()}]`, value: moment(member.joinedTimestamp).format('LLL') }
         );
@@ -61,11 +61,11 @@ module.exports = {
     } else {
       const targetUser = user;
       const em = new EmbedBuilder()
-        .setAuthor({ name: `${targetUser.username}'s information`, iconURL: targetUser.displayAvatarURL({ format: 'png', dynamic: true }) })
-        .setThumbnail(targetUser.displayAvatarURL({ format: 'png', dynamic: true }))
+        .setAuthor({ name: `${targetUser.username}'s information`, iconURL: targetUser.displayAvatarURL() })
+        .setThumbnail(targetUser.displayAvatarURL())
         .addFields(
           { name: "Username", value: targetUser.username, inline: true },
-          { name: "Tag", value: targetUser.tag, inline: true },
+          { name: "ID", value: targetUser.id, inline: true },
           { name: `Created At [${moment(targetUser.createdTimestamp).fromNow()}]`, value: moment(targetUser.createdTimestamp).format('LLL') }
         )
         .setFooter({ text: `Requested by ${interaction.member.displayName}` });

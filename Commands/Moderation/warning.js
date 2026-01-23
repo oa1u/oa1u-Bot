@@ -3,7 +3,7 @@ const JSONDatabase = require('../../Functions/Database');
 require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const { staffrole } = require("../../Config/constants/roles.json");
+const { ModRole } = require("../../Config/constants/roles.json");
 const { Color } = require("../../Config/constants/misc.json")
 
 const colorInt = parseInt(Color.replace('#', ''), 16);

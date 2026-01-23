@@ -19,8 +19,3 @@ module.exports = (client) => {
             return logs.send({embeds: [embed]});
     })
 }
-
-
-
-
-

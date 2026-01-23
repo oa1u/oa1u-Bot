@@ -26,8 +26,3 @@ module.exports = (client) => {
     roleDelete(client);
     roleUpdate(client);
 }
-
-
-
-
-

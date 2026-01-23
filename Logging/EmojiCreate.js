@@ -7,19 +7,14 @@ module.exports = (client) => {
     let logs = await client.channels.cache.get(channelLog);
          let embed = new EmbedBuilder()
              .setTitle("Emoji Added")
-             .setColor(parseInt(Color.replace('#', ''), 16))
+             .setColor(Color)
             .setDescription(`A custom emoji was added to the server.`)
             .addFields(
                 { name: "Emoji Name", value: emoji.name, inline: true },
                 { name: "Emoji ID", value: emoji.id, inline: true },
                 { name: "Animted Emoji?", value: emoji.animated.toString() }
             )
-             if (emoji.author) embed.addFields({ name: "Added By", value: emoji.author.tag });
+             if (emoji.author) embed.addFields({ name: "Added By", value: emoji.author.username });
             return logs.send({embeds: [embed]});
   })
 }
-
-
-
-
-

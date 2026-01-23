@@ -7,7 +7,7 @@ module.exports = (client) => {
     let logs = await client.channels.cache.get(channelLog);
         	let embed = new EmbedBuilder()
             .setTitle("New Invite Created")
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             const fields = [
                 { name: "Invite Code", value: invite.code, inline: true },
                 { name: "Invite URL", value: invite.url, inline: true },
@@ -17,14 +17,9 @@ module.exports = (client) => {
                 fields.push({ name: "Invite Expires At", value: invite.expiresAt.toString() });
             }
         	if(invite.inviter){
-                fields.push({ name: "Inviter", value: `${invite.inviter.tag} | ${invite.inviter.id}` });
+                fields.push({ name: "Inviter", value: `${invite.inviter.username} | ${invite.inviter.id}` });
             }
             embed.addFields(fields);
             return logs.send({embeds: [embed]});
     })
 }
-
-
-
-
-

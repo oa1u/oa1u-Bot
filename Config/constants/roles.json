@@ -2,17 +2,5 @@
     "roleID": "",
     "ModRole": "",
     "AdminRole": "",
-    "StaffRole": "",
-    "SupportRole": "",
-    "MutedRole": "",
-    "HelperRole": "",
-    "DonaterRole": "",
-    "ActiveRole": "",
-    "ProficientRole": "",
-    "PopularRole": "",
-    "ServerBooster": "",
-    "ExceptionalRole": "",
-    "ExtremeRole": "",
-    "StaffManagerRole": "",
-    "BotDev": ""
+    "SupportRole": ""
 }

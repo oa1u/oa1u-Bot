@@ -28,9 +28,9 @@ module.exports = {
         if (!role) return;
         
         const embed = new EmbedBuilder()
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setTitle(action)
-            .setDescription(`${newMember.user.tag} (${newMember.id})`)
+            .setDescription(`${newMember.user.username} (${newMember.id})`)
             .addFields(
                 { name: "Role", value: `${role}`, inline: true }
             )

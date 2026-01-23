@@ -20,6 +20,7 @@ require("./events/_loader")(client).then(() =>
 require("./commands/_slashLoader")(client.slashCommands).catch((err) => {
   console.error("Error loading slash commands:", err);
 });
+require("./Logging/index")(client);
 
 // Interaction handler for slash commands
 client.once("clientReady", () => {

@@ -1,6 +1,6 @@
 const { EmbedBuilder, ChannelType } = require('discord.js');
 const { Color } = require("../Config/constants/misc.json");
-const { guildLog } = require("../Config/constants/channel.json");
+const { channelLog } = require("../Config/constants/channel.json");
 
 module.exports = {
     name: "guildMemberAdd",
@@ -9,15 +9,15 @@ module.exports = {
         if (!args || !args[0]) return;
         const member = args[0];
         const guild = member.guild;
-        const guildLogChannel = guild.channels.cache.get(guildLog);
+        const guildLogChannel = guild.channels.cache.get(channelLog);
         
         if (!guildLogChannel) return;
         
         const embed = new EmbedBuilder()
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setTitle("Member Joined")
-            .setDescription(`${member.user.tag} (${member.id}) has joined the server`)
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setDescription(`${member.user.username} (${member.id}) has joined the server`)
+            .setThumbnail(member.user.displayAvatarURL())
             .addFields(
                 { name: "Account Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
                 { name: "Member Count", value: `${guild.memberCount}`, inline: true }

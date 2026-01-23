@@ -8,7 +8,7 @@ module.exports = (client) => {
         if(channel.type === ChannelType.GuildText){
         	let embed = new EmbedBuilder()
             .setTitle("Channel Created")
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setDescription(`A new channel was created.`)
             .addFields(
                 { name: "Channel", value: channel.toString(), inline: true },
@@ -18,8 +18,3 @@ module.exports = (client) => {
         }
     })
 }
-
-
-
-
-

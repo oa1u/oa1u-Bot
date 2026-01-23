@@ -14,10 +14,10 @@ module.exports = {
         if (!guildLogChannel) return;
         
         const embed = new EmbedBuilder()
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setTitle("Member Left")
-            .setDescription(`${member.user.tag} (${member.id}) has left the server`)
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setDescription(`${member.user.username} (${member.id}) has left the server`)
+            .setThumbnail(member.user.displayAvatarURL())
             .addFields(
                 { name: "Time in Server", value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true },
                 { name: "Member Count", value: `${guild.memberCount}`, inline: true }

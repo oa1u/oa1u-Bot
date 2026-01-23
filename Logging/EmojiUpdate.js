@@ -7,7 +7,7 @@ module.exports = (client) => {
     let logs = await client.channels.cache.get(channelLog);
         	let embed = new EmbedBuilder()
             .setTitle("Emoji Updated")
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setDescription(`A custom emoji was updated.`)
             const fields = [];
             if(oldEmoji.name !== newEmoji.name){
@@ -19,8 +19,3 @@ module.exports = (client) => {
             return logs.send({embeds: [embed]});
     })
 }
-
-
-
-
-

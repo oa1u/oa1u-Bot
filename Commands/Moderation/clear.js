@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
-const { staffrole } = require("../../Config/constants/roles.json");
+const { ModRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
 const { Color } = require("../../Config/constants/misc.json")
 
@@ -26,7 +26,7 @@ module.exports = {
         .setTitle(`Error`)
         .setDescription("The limit of messages you can delete at once is 100");
     
-    if(!interaction.member.roles.cache.has(staffrole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
+    if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
 
     const amount = interaction.options.getInteger('amount');
 

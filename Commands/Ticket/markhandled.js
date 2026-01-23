@@ -1,7 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { Color } = require("../../Config/constants/misc.json");
-const { supportrole } = require("../../Config/constants/roles.json");
+const { SupportRole } = require("../../Config/constants/roles.json");
 const { ticketCategory } = require("../../Config/constants/channel.json");
 
 // Convert hex color to integer
@@ -19,7 +19,7 @@ module.exports = {
         .setTitle(`Error`)
         .setDescription(`You don't have enough permission to do that!`);
     
-    if(!interaction.member.roles.cache.has(supportrole)) {
+    if(!interaction.member.roles.cache.has(SupportRole)) {
       return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     }
 

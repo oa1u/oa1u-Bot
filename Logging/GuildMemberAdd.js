@@ -7,20 +7,15 @@ module.exports = (client) => {
     let logs = await client.channels.cache.get(channelLog);
         	let embed = new EmbedBuilder()
             .setTitle("Member Joined")
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setDescription(`A new member joined the server.`)
             .addFields(
-                { name: "User", value: member.user.tag, inline: true },
+                { name: "User", value: member.user.username, inline: true },
                 { name: "User ID", value: member.id, inline: true },
                 { name: "User Joined At", value: member.joinedAt.toString(), inline: true },
                 { name: "User Account Registered At", value: member.user.createdAt.toString(), inline: true }
             )
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .setThumbnail(member.user.displayAvatarURL())
             return logs.send({embeds: [embed]});
     })
 }
-
-
-
-
-

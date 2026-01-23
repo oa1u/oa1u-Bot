@@ -5,6 +5,3 @@ module.exports = {
         console.log("All commands and events have been loaded!");
     }
 };
-
-
-

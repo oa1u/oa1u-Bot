@@ -5,6 +5,3 @@ module.exports = (guild, string) => {
 
 	return guild.members.cache.get(id);
 }
-
-
-

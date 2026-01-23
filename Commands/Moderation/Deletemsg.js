@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
-const { staffrole } = require("../../Config/constants/roles.json");
+const { ModRole } = require("../../Config/constants/roles.json");
 const { Color } = require("../../Config/constants/misc.json")
 
 module.exports = {
@@ -20,7 +20,7 @@ module.exports = {
       .setTitle('Prohibited User')
       .setDescription('You have to be in the moderation team to be able to use this command!');
 
-    if (!interaction.member.roles.cache.has(staffrole)) {
+    if (!interaction.member.roles.cache.has(ModRole)) {
       return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     }
     

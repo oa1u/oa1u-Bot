@@ -8,7 +8,7 @@ module.exports = (client) => {
         if(channel.type === ChannelType.GuildText){
         	let embed = new EmbedBuilder()
             .setTitle("Channel Deleted")
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setDescription(`A channel was deleted.`)
             const fields = [
                 { name: "Channel Name", value: channel.name, inline: true },
@@ -23,8 +23,3 @@ module.exports = (client) => {
         }
     })
 }
-
-
-
-
-

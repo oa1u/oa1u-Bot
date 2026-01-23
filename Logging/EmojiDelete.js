@@ -7,7 +7,7 @@ module.exports = (client) => {
     let logs = await client.channels.cache.get(channelLog);
         	let embed = new EmbedBuilder()
             .setTitle("Emoji Deleted")
-            .setColor(parseInt(Color.replace('#', ''), 16))
+            .setColor(Color)
             .setDescription(`A custom emoji was deleted.`)
             .addFields(
                 { name: "Emoji Name", value: emoji.name, inline: true },
@@ -17,8 +17,3 @@ module.exports = (client) => {
             return logs.send({embeds: [embed]});
     })
 }
-
-
-
-
-
