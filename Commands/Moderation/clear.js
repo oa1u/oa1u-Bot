@@ -1,49 +1,78 @@
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
-const { ModRole } = require("../../Config/constants/roles.json");
-const { channelLog } = require("../../Config/constants/channel.json")
+const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
+const { MessageFlags, PermissionFlagsBits } = require('discord.js');
+const { sendErrorReply, sendSuccessReply, createModerationEmbed } = require("../../Functions/EmbedBuilders");
+const { logModerationAction } = require("../../Functions/ModerationHelper");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('clear')
-    .setDescription('Clear a certain amount of messages!')
+    .setDescription('Clear a certain amount of messages from the channel')
     .addIntegerOption(option =>
       option.setName('amount')
-        .setDescription('Amount of messages to delete')
+        .setDescription('Amount of messages to delete (1-100)')
         .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(100)
+    )
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('Only delete messages from this specific user')
+        .setRequired(false)
     ),
   category: "moderation",
   async execute(interaction) {
-    const warnLogs = interaction.guild.channels.cache.get(channelLog);
-    let Prohibited = new EmbedBuilder()
-      .setColor(0xF04747)
-      .setTitle(`❌ No Permission`)
-      .setDescription(`You need the Moderator role to use this command!`);
-    
-    let MessageLimit = new EmbedBuilder()
-      .setColor(0xFAA61A)
-      .setTitle(`⚠️ Invalid Amount`)
-      .setDescription("You can only delete up to **100 messages** at once.");
-    
-    if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
+    // Check permissions
+    if (!interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+      await sendErrorReply(
+        interaction,
+        'No Permission',
+        'You need the **Manage Messages** permission to use this command!'
+      );
+      return;
+    }
 
     const amount = interaction.options.getInteger('amount');
+    const targetUser = interaction.options.getUser('user');
 
-    if (amount > 100) return interaction.reply({ embeds: [MessageLimit], flags: MessageFlags.Ephemeral });
+    try {
+      // Fetch messages
+      const messages = await interaction.channel.messages.fetch({ limit: amount });
+      
+      // Filter by user if specified
+      const toDelete = targetUser 
+        ? messages.filter(msg => msg.author.id === targetUser.id)
+        : messages;
 
-    await interaction.channel.bulkDelete(amount, true).then(Amount => {
-        let Embed = new EmbedBuilder()
-          .setColor(0x43B581)
-          .setTitle(`🧹 Messages Cleared`)
-          .setDescription(`Successfully deleted **${Amount.size}** message(s)`)
-          .addFields(
-            { name: "👮 Moderator", value: `${interaction.user.tag}\n\`${interaction.user.id}\``, inline: true },
-            { name: "📝 Messages Deleted", value: `**${Amount.size}**`, inline: true },
-            { name: "📍 Channel", value: `${interaction.channel}`, inline: true }
-          )
-          .setTimestamp()
-          .setFooter({ text: `Bulk Delete` });
-        warnLogs.send({ embeds: [Embed] });
-        return interaction.reply({ embeds: [Embed], flags: MessageFlags.Ephemeral });
-    })
+      // Bulk delete
+      const deleted = await interaction.channel.bulkDelete(toDelete, true);
+
+      // Create logging embed
+      const logEmbed = createModerationEmbed({
+        action: '🧹 Clear',
+        target: targetUser || interaction.channel,
+        moderator: interaction.user,
+        reason: targetUser 
+          ? `Cleared ${deleted.size} message(s) from ${targetUser.tag}`
+          : `Cleared ${deleted.size} message(s)`,
+        color: 0x43B581
+      });
+
+      // Log the action
+      await logModerationAction(interaction, logEmbed);
+
+      // Send success response
+      await sendSuccessReply(
+        interaction,
+        'Messages Cleared',
+        `Successfully deleted **${deleted.size}** message(s)${targetUser ? ` from **${targetUser.tag}**` : ''}`
+      );
+    } catch (err) {
+      console.error(`Error clearing messages:`, err.message);
+      await sendErrorReply(
+        interaction,
+        'Clear Failed',
+        `Could not clear messages\nError: ${err.message}`
+      );
+    }
   }
 };

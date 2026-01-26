@@ -4,7 +4,7 @@ const { ModRole } = require("../../Config/constants/roles.json");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('deletemsg')
-    .setDescription('Delete a message')
+    .setDescription('Permanently delete a specific message by providing its message URL')
     .addStringOption(option =>
       option.setName('link')
         .setDescription('Message link')

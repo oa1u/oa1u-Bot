@@ -1,115 +1,63 @@
 # 🤖 Discord Bot
 
-A feature-rich Discord moderation and management bot with ticket system, verification, and comprehensive logging.
+Feature-rich Discord moderation and management bot with tickets, verification, giveaways, and comprehensive logging.
 
 ---
 
-## ⚠️ Disclaimer
+## 📋 Table of Contents
+- Overview
+- Features
+- Setup
+- Commands
+- Roadmap
+- Known Issues
+- Support & Contributing
+- License
 
-This bot is actively under development and may contain bugs or incomplete features. Expect updates at some point, improvements, and fixes as development continues.
+---
+
+## ⚡ Overview
+Aiming to be an all-in-one toolkit for community servers: moderation with case tracking, robust logging, tickets, verification, and quality-of-life utilities. Still evolving, so expect frequent tweaks.
+
+> ⚠️ Under development. Some options are placeholders and will be refined or removed over time.
 
 ---
 
 ## ✨ Features
-
-### 🛡️ Moderation
-- **Ban/Kick/Warn** - Full moderation suite with case ID tracking
-- **Warning System** - View warns by case ID or user
-- **Clear Messages** - Bulk delete up to 100 messages
-- **Delete Specific Messages** - Remove messages by link
-
-### 🎫 Ticket System
-- **Create Tickets** - Users can open support tickets with reasons
-- **Close Tickets** - `/close` command or ❌ reaction
-- **Mark Handled** - Support team can flag resolved tickets
-
-### 🔐 Verification
-- **Captcha System** - Auto-verify new members with captcha challenges
-- **Manual Verify** - `/verify` command for users that joined with DM's disabled
-- **Welcome Canvas** - Custom welcome images for verified members
-
-### 📊 Logging
-Comprehensive event logging for:
-- Channel events (create, delete, update)
-- Emoji events (create, delete, update)
-- Member events (join, leave, update)
-- Invite events (create, delete)
-- Role events (create, delete, update)
-
-### ⚙️ Management
-- **Announcements** - announcements
-- **Unban** - Remove bans by user ID
-- **Clear Warnings** - Remove specific warnings by case ID
-- **Check Ban** - Lookup ban details by case ID
-
-### 🔧 Utility
-- **User Info** - Detailed user information with roles, permissions, and account age
-- **Help** - Dynamic help menu with role-based filtering
+- 🛡️ **Moderation**: Ban, kick, and warn users with automatic case tracking and reason logging. View warnings by user or case ID. Clear specific warnings when appropriate.
+- 🎫 **Tickets**: User-friendly support ticket system with claim/unclaim functionality, user management, and reaction-based ticket closing. Track all ticket interactions.
+- 📊 **Logging**: Comprehensive server logging including member joins/leaves, role changes, channel/emoji creation/deletion, guild updates, and invite tracking.
+- ⚙️ **Management**: Server announcements (regular and @everyone), user verification, level/rank management, and giveaway system with automatic winners.
+- 🎉 **Giveaways**: Host giveaways with configurable winners, duration, and requirements. Automatic winner selection and notification.
+- 📈 **Leveling**: XP-based member progression system with customizable levels and rewards. Leaderboard to view top members.
+- 🤖 **Auto-Moderation**: Automatic filter for blocked words and phrases with configurable responses.
+- 🎵 **Voice Channels**: "Join to Create" system for dynamic voice channel creation.
+- 🎮 **Fun Commands**: 8-ball, trivia, jokes, and polls for community engagement.
 
 ---
 
-## 🚀 Setup Instructions
-
-### 1️⃣ Install Dependencies
+## 🚀 Setup
+1) Install dependencies
 ```bash
 npm install
 ```
-
-### 2️⃣ Configure the Bot
-Fill in all required values in the `/Config` folder:
-- `credentials.env` - Bot token and API keys
-- `main.json` - Server settings
-- `presence.json` - Bot presence/status
-- `constants/` - Channel IDs, role IDs, and other constants
-
-> **Note:** Some config options are placeholders and will be implemented or removed in future updates.
-
-### 3️⃣ Register Commands
-```bash
-node register-commands.js
-```
-
-### 4️⃣ Start the Bot
+2) Configure the bot (in `/Config`)
+- `credentials.env`: Bot token and API keys
+- `main.json`: Server settings
+- `presence.json`: Bot presence/status
+- `constants/`: Channel IDs, role IDs, and other constants
+4) Start the bot
 ```bash
 node index.js
 ```
 
-If everything is configured correctly, your bot should now be online! 🎉
+If configured correctly, the bot should come online. 🎉
 
 ---
 
-## 🛠️ To-Do List
+## 📦 Commands
 
-- [ ] Server Info command
-- [ ] Giveaway system
-- [ ] "Join to Create" voice channel system
-- [ ] Timeout & Un-timeout commands
-- [ ] Add more fun/entertainment commands
-- [ ] Add code comments for better documentation
-- [ ] Work on the constant naming conventions
-- [ ] Auto Mod
-- [ ] Update the descriptions for the commands
-- [ ] See if i can figure out a way to unban a user using the case ID instead of user ID
-- [x] ~~Try to compact the config folder~~ ✅
-- [x] ~~Checkban command (by case ID)~~ ✅
-- [x] ~~Add verify command~~ ✅
-- [x] ~~Update embeds~~ ✅
-- [x] ~~Fix ticket closing with ❌ reaction~~ ✅
-- [x] ~~Fix logging system~~ ✅
-
----
-
-## 🐞 Known Issues
-
-The warning system is currently buggy, will be updated soon
-
-If you discover any bugs, please report them in the Issues tab.
-
----
-
-## 📦 Commands Overview
-
-### Moderation (Requires Moderator Role)
+### Moderation (Moderator role)
 | Command | Description |
 |---------|-------------|
 | `/ban` | Ban a user with reason tracking |
@@ -120,52 +68,94 @@ If you discover any bugs, please report them in the Issues tab.
 | `/warning` | View warning details by case ID |
 | `/warns` | View all warnings for a user |
 
-### Management (Requires Admin Role)
+### Management (Admin role)
 | Command | Description |
 |---------|-------------|
 | `/announce` | Send a regular announcement |
 | `/eannounce` | Send an everyone announcement |
+| `/giveaway` | Initiate a timed giveaway with automatic winner selection |
+| `/setlevel` | Set a user's XP or level, or reset their progress |
 | `/unban` | Unban a user by ID |
 | `/clearwarns` | Clear a specific warning by case ID |
-| `/checkban` | Lookup ban information by case ID |
-| `/verify` | Allows a user to verify themselves |
+| `/checkban` | Look up ban information by case ID |
 
 ### Ticket System
 | Command | Description |
 |---------|-------------|
 | `/ticket` | Create a new support ticket |
 | `/close` | Close the current ticket |
+| `/claim` | Assign ticket to yourself as the primary handler (Support role) |
 | `/markhandled` | Mark ticket as handled (Support role) |
+| `/adduser` | Add a member to view the ticket |
+| `/removeuser` | Remove a member's access from the ticket |
+
+### Leveling & XP
+| Command | Description |
+|---------|-------------|
+| `/rank` | View your or another user's rank and level progress |
+| `/leaderboard` | View the server XP leaderboard |
+
+### Fun
+| Command | Description |
+|---------|-------------|
+| `/8ball` | Consult the magic 8-ball for answers to yes/no questions |
+| `/trivia` | Challenge your knowledge with a random trivia question |
 
 ### Utility
 | Command | Description |
 |---------|-------------|
-| `/userinfo` | Display detailed user information |
 | `/help` | Show all available commands |
+| `/userinfo` | Display detailed user information |
+| `/serverinfo` | Display comprehensive server statistics and details |
+| `/define` | Look up word definitions, phonetics, and usage examples |
+| `/joke` | Get a random joke |
+| `/poll` | Create an interactive poll with customizable options |
+| `/remind` | Schedule a personal reminder via DM |
+
+### Verification
+| Command | Description |
+|---------|-------------|
+| `/verify` | Verify yourself to gain access to the server |
 
 ---
 
-## 🧩 Support & Contributions
+## 🗺️ Roadmap
+- [x] ~~Server info command~~✅
+- [x] ~~Giveaway system~~✅
+- [x] ~~"Join to Create" voice channel system~~✅
+- [ ] Timeout and un-timeout commands
+- [ ] More fun/misc commands
+- [ ] Change constant names
+- [ ] Fix the welcome/leave notifications
+- [ ] Maybe update the automod filter a bit
+- [x] ~~Auto-moderation~~✅
+- [x] ~~Update command descriptions~~✅
+- [x] ~~Unban by case ID (not user ID)~~✅
+- [x] ~~Compacted config folder~~ ✅
+- [x] ~~Checkban command (by case ID)~~ ✅
+- [x] ~~Add verify command~~ ✅
+- [x] ~~Update embeds~~ ✅
+- [x] ~~Fix ticket closing with ❌ reaction~~ ✅
+- [x] ~~Fix logging system~~ ✅
 
-### 🐛 Found a Bug?
-If you encounter any bugs or issues:
-1. Open an issue in the **Issues** tab
-2. Provide detailed steps to reproduce
-3. Include any error messages or screenshots
+---
 
-### 💡 Feature Requests
-Have an idea for a new feature? Feel free to suggest it in the Issues tab!
+## 🐞 Known Issues
+- Report new bugs with repro steps and screenshots when possible.
 
-### 🤝 Contributing
-Contributions are welcome! If you'd like to improve the bot, feel free to fork the repository and submit a pull request.
+---
+
+## 🤝 Support & Contributing
+- 🐛 Bugs: Open an issue with steps to reproduce and any errors/logs.
+- 💡 Features: Suggest ideas in the Issues tab.
+- 🔧 Contributing: Fork, improve, and submit a pull request.
 
 ---
 
 ## 📝 License
-
-This project is open source and available for personal and educational use.
+Open source for personal and educational use.
 
 ---
 
 **Made with ❤️ for Discord communities**
-**ReadMe.MD was created by ChatGPT**
+**Readme.md was made by chatgpt**

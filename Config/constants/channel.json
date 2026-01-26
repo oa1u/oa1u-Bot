@@ -6,8 +6,10 @@
     "leaveChannel": "",
     "membercount": "",
     "ticketCategory": "",
+    "ticketLog": "",
     "jointocreatechannel": "",
     "jointocreatecategory": "",
     "verificationchannel": "",
-    "captchalogchannel": "" 
+    "captchalogchannel": "",
+    "giveawayChannel": ""
 }

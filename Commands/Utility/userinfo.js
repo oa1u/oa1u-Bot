@@ -6,7 +6,7 @@ require("moment-duration-format");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('userinfo')
-    .setDescription('Get information about a user')
+    .setDescription('Display comprehensive member information including roles, badges, and account details')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User to get info about')
@@ -16,10 +16,10 @@ module.exports = {
   async execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     const statusMoji = {
-      dnd: '<:dnd:817030828290867231>',
-      offline: '<:offline:817030793142337536>',
-      online: '<:online:817030844584951879>',
-      idle: '<:idle:817030811853389926>'
+      dnd: '🔴',
+      offline: '⚫',
+      online: '🟢',
+      idle: '🟡'
     }
     const statusName = {
       dnd: 'Do not Disturb',
@@ -28,9 +28,17 @@ module.exports = {
       idle: 'Idle'
     }
     const device = {
-      mobile: '<:mobile:817032273463476224>',
-      browser: '<:browser:817032290731032597>',
-      desktop: '<:desktopicon:817032252390899752>'
+      mobile: '📱',
+      browser: '🌐',
+      desktop: '💻'
+    }
+    
+    const activityType = {
+      0: 'Playing',
+      1: 'Streaming',
+      2: 'Listening to',
+      3: 'Watching',
+      5: 'Competing in'
     }
     
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
@@ -39,6 +47,34 @@ module.exports = {
       // Calculate account age
       const accountAge = moment.duration(Date.now() - member.user.createdTimestamp).format('Y [years], M [months], D [days]');
       const serverAge = moment.duration(Date.now() - member.joinedTimestamp).format('Y [years], M [months], D [days]');
+      
+      // Get user badges/flags
+      const flags = member.user.flags ? member.user.flags.toArray() : [];
+      const badgeEmojis = {
+        Staff: '👮',
+        Partner: '🤝',
+        Hypesquad: '🎉',
+        HypeSquadOnlineHouse1: '🟣',
+        HypeSquadOnlineHouse2: '🔴',
+        HypeSquadOnlineHouse3: '🟢',
+        BugHunterLevel1: '🐛',
+        BugHunterLevel2: '🐛',
+        PremiumEarlySupporter: '⭐',
+        VerifiedDeveloper: '✅',
+        CertifiedModerator: '🛡️',
+        ActiveDeveloper: '⚡'
+      };
+      const userBadges = flags.map(flag => badgeEmojis[flag] || flag).join(' ');
+      
+      // Get voice state
+      const voiceChannel = member.voice.channel;
+      const voiceState = voiceChannel ? `${voiceChannel.toString()} ${member.voice.serverMute ? '🔇' : ''}${member.voice.serverDeaf ? '🔈' : ''}${member.voice.selfMute ? '🎤' : ''}${member.voice.selfDeaf ? '🔊' : ''}${member.voice.streaming ? '📹' : ''}` : 'Not in voice';
+      
+      // Get join position
+      const members = await interaction.guild.members.fetch();
+      const joinPosition = [...members.filter(m => !m.user.bot).values()]
+        .sort((a, b) => a.joinedTimestamp - b.joinedTimestamp)
+        .findIndex(m => m.id === member.id) + 1;
       
       // Get roles (excluding @everyone)
       const roles = member.roles.cache
@@ -59,22 +95,49 @@ module.exports = {
       if (member.permissions.has('ModerateMembers')) keyPermissions.push('Timeout Members');
       const permissionsDisplay = keyPermissions.length > 0 ? keyPermissions.join(', ') : 'None';
       
+      // Check if user is timed out
+      const isTimedOut = member.communicationDisabledUntil && member.communicationDisabledUntil > Date.now();
+      const timeoutEnds = isTimedOut ? moment(member.communicationDisabledUntil).fromNow() : null;
+      
+      // Check for server boost
+      const isBoosting = member.premiumSince !== null;
+      const boostingSince = isBoosting ? moment(member.premiumSince).format('LLL') : null;
+      const boostDuration = isBoosting ? moment.duration(Date.now() - member.premiumSince).format('Y [years], M [months], D [days]') : null;
+      
       const em = new EmbedBuilder()
-        .setAuthor({ name: `${member.displayName}'s information`, iconURL: member.user.displayAvatarURL() })
-        .setThumbnail(member.user.displayAvatarURL())
+        .setAuthor({ name: `${member.displayName}'s Profile`, iconURL: member.user.displayAvatarURL() })
+        .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
         .setColor(member.displayHexColor !== '#000000' ? parseInt(member.displayHexColor.replace('#', ''), 16) : 0x5865F2)
         .addFields(
-          { name: "Username", value: member.user.username, inline: true },
-          { name: "Display Name", value: member.displayName, inline: true },
-          { name: "ID", value: member.user.id, inline: true },
-          { name: "Bot", value: member.user.bot ? 'Yes' : 'No', inline: true },
-          { name: "Nickname", value: member.nickname || 'None', inline: true },
-          { name: "Highest Role", value: member.roles.highest.toString(), inline: true },
-          { name: `Account Created [${moment(member.user.createdTimestamp).fromNow()}]`, value: `${moment(member.user.createdTimestamp).format('LLL')}\n*${accountAge}*` },
-          { name: `Joined Server [${moment(member.joinedTimestamp).fromNow()}]`, value: `${moment(member.joinedTimestamp).format('LLL')}\n*${serverAge}*` },
-          { name: `Roles [${roles.length}]`, value: rolesDisplay },
-          { name: "Key Permissions", value: permissionsDisplay }
+          { name: "👤 Username", value: member.user.username, inline: true },
+          { name: "📝 Display Name", value: member.displayName, inline: true },
+          { name: "🆔 ID", value: `\`${member.user.id}\``, inline: true },
+          { name: "🤖 Bot", value: member.user.bot ? '✅ Yes' : '❌ No', inline: true },
+          { name: "🏷️ Nickname", value: member.nickname || 'None', inline: true },
+          { name: "🎭 Highest Role", value: member.roles.highest.toString(), inline: true },
+          { name: `⏰ Account Created`, value: `${moment(member.user.createdTimestamp).format('LLL')}\n*${moment(member.user.createdTimestamp).fromNow()}*\n**${accountAge}**` },
+          { name: `📍 Joined Server`, value: `${moment(member.joinedTimestamp).format('LLL')}\n*${moment(member.joinedTimestamp).fromNow()}*\n**${serverAge}**\n🏅 Join Position: **#${joinPosition}**` },
+          { name: `🎪 Roles [${roles.length}]`, value: rolesDisplay || '`None`' },
+          { name: "⚔️ Key Permissions", value: permissionsDisplay || '`None`' }
         );
+      
+      // Add badges if present
+      if (userBadges) {
+        em.addFields({ name: "🏆 Badges", value: userBadges || 'None', inline: false });
+      }
+      
+      // Add boost info if boosting
+      if (isBoosting) {
+        em.addFields({ name: "💎 Server Booster", value: `Boosting since: **${boostingSince}**\n⏱️ Duration: *${boostDuration}*`, inline: false });
+      }
+      
+      // Add timeout info if timed out
+      if (isTimedOut) {
+        em.addFields({ name: "⏱️ Timeout Status", value: `🚫 Timed out\n⌛ Ends ${timeoutEnds}`, inline: true });
+      }
+      
+      // Add voice state
+      em.addFields({ name: "🎤 Voice Channel", value: voiceState, inline: false });
       if (member.presence) {
         em.addFields(
           { name: "Status", value: `${statusMoji[member.presence.status]} ${statusName[member.presence.status]}`, inline: true }
@@ -85,24 +148,36 @@ module.exports = {
           );
         }
         if (member.presence.activities && member.presence.activities[0] && member.presence.activities[0].name !== 'Custom Status') {
-          em.addFields({ name: "Activity", value: `${member.presence.activities[0].type} ${member.presence.activities[0].name}` });
+          const activity = member.presence.activities[0];
+          const activityText = activityType[activity.type] || 'Playing';
+          em.addFields({ name: "🎮 Activity", value: `**${activityText}** ${activity.name}`, inline: true });
+        } else if (!member.presence.activities || member.presence.activities.length === 0) {
+          em.addFields({ name: "🎮 Activity", value: '`No status`', inline: true });
         }
       }
+      
+      // Add banner if available
+      const fetchedUser = await member.user.fetch();
+      if (fetchedUser.banner) {
+        em.setImage(fetchedUser.bannerURL({ size: 512 }));
+      }
+      
       if (interaction.user.id !== member.id) {
-        em.setFooter({ text: `Requested by ${interaction.user.username}` });
+        em.setFooter({ text: `📊 Requested by ${interaction.user.username}` });
       }
       await interaction.reply({ embeds: [em] });
     } else {
       const targetUser = user;
       const em = new EmbedBuilder()
-        .setAuthor({ name: `${targetUser.username}'s information`, iconURL: targetUser.displayAvatarURL() })
-        .setThumbnail(targetUser.displayAvatarURL())
+        .setAuthor({ name: `${targetUser.username}'s Profile`, iconURL: targetUser.displayAvatarURL() })
+        .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+        .setColor(0x5865F2)
         .addFields(
-          { name: "Username", value: targetUser.username, inline: true },
-          { name: "ID", value: targetUser.id, inline: true },
-          { name: `Created At [${moment(targetUser.createdTimestamp).fromNow()}]`, value: moment(targetUser.createdTimestamp).format('LLL') }
+          { name: "👤 Username", value: targetUser.username, inline: true },
+          { name: "🆔 ID", value: `\`${targetUser.id}\``, inline: true },
+          { name: "⏰ Account Created", value: `${moment(targetUser.createdTimestamp).format('LLL')}\n*${moment(targetUser.createdTimestamp).fromNow()}*` }
         )
-        .setFooter({ text: `Requested by ${interaction.member.displayName}` });
+        .setFooter({ text: `📊 Requested by ${interaction.member.displayName}` });
       await interaction.reply({ embeds: [em] });
     }
   }

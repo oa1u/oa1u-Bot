@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { CaptchaGenerator } = require("captcha-canvas");
-const { roleID } = require("../../Config/constants/roles.json");
+const { sendErrorReply } = require('../../Functions/EmbedBuilders');
+const { roleID, AdminRole } = require("../../Config/constants/roles.json");
 const { verificationchannel, captchalogchannel } = require("../../Config/constants/channel.json");
 
 const userCaptchaData = {};
@@ -8,15 +9,16 @@ const userCaptchaData = {};
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('verify')
-    .setDescription('Request a new verification captcha'),
+    .setDescription('Complete server verification by solving a CAPTCHA challenge'),
   category: 'management',
   async execute(interaction) {
     // Check if command is used in verification channel
     if (interaction.channelId !== verificationchannel) {
-      return interaction.reply({ 
-        content: '❌ This command can only be used in the verification channel.', 
-        ephemeral: true 
-      });
+      return sendErrorReply(
+        interaction,
+        'Wrong Channel',
+        'This command can only be used in the verification channel.'
+      );
     }
 
     const member = interaction.member;
@@ -24,8 +26,13 @@ module.exports = {
 
     // Check if user is already verified
     if (member.roles.cache.has(roleID)) {
+      const alreadyVerifiedEmbed = new EmbedBuilder()
+        .setColor(0x43B581)
+        .setTitle('✅ Already Verified')
+        .setDescription('You are already verified and have access to the server!');
+      
       return interaction.reply({ 
-        content: '✅ You are already verified!', 
+        embeds: [alreadyVerifiedEmbed], 
         ephemeral: true 
       });
     }
@@ -47,10 +54,11 @@ module.exports = {
     console.log(`Generated captcha for ${member.user.tag}: ${captchaCode}`);
 
     if (!captchachannel) {
-      return interaction.reply({ 
-        content: '❌ Verification system is not configured. Please contact an administrator.', 
-        ephemeral: true 
-      });
+      return sendErrorReply(
+        interaction,
+        'System Error',
+        `Verification system is not configured. Please contact an <@&${AdminRole}>.`
+      );
     }
 
     try {
@@ -83,14 +91,24 @@ module.exports = {
       await dmChannel.send({
         embeds: [e1.setImage(captchaImage.url)]
       }).catch(async () => {
+        const dmErrorEmbed = new EmbedBuilder()
+          .setColor(0xF04747)
+          .setTitle('❌ DM Failed')
+          .setDescription('Unable to send you a DM. Please enable DMs from server members and try again.');
+        
         return interaction.reply({ 
-          content: '❌ Unable to send you a DM. Please enable DMs from server members and try again.', 
+          embeds: [dmErrorEmbed], 
           ephemeral: true 
         });
       });
 
+      const captchaSentEmbed = new EmbedBuilder()
+        .setColor(0x43B581)
+        .setTitle('✅ Captcha Sent')
+        .setDescription('A new captcha has been sent to your DMs! Please check your messages.');
+      
       await interaction.reply({ 
-        content: '✅ A new captcha has been sent to your DMs! Please check your messages.', 
+        embeds: [captchaSentEmbed], 
         ephemeral: true 
       });
 
@@ -144,13 +162,23 @@ module.exports = {
           console.log(err);
         }
       }).catch(async () => {
-        dmChannel.send(`⏱️ Operation timed out, please run /verify to try again.`).catch(() => {});
+        const timeoutEmbed = new EmbedBuilder()
+          .setColor(0xFAA61A)
+          .setTitle('⏱️ Timeout')
+          .setDescription('Operation timed out. Please run `/verify` to try again.');
+        
+        dmChannel.send({ embeds: [timeoutEmbed] }).catch(() => {});
       });
 
     } catch (err) {
       console.log(err);
+      const errorEmbed = new EmbedBuilder()
+        .setColor(0xF04747)
+        .setTitle('❌ Error')
+        .setDescription('An error occurred while generating your captcha. Please try again.');
+      
       return interaction.reply({ 
-        content: '❌ An error occurred while generating your captcha. Please try again.', 
+        embeds: [errorEmbed], 
         ephemeral: true 
       });
     }

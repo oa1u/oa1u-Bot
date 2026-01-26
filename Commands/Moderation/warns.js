@@ -1,5 +1,5 @@
 const moment = require("moment");
-const JSONDatabase = require('../../Functions/Database');
+const DatabaseManager = require('../../Functions/DatabaseManager');
 require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
@@ -8,7 +8,7 @@ const { ModRole } = require("../../Config/constants/roles.json");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('warns')
-    .setDescription('Get a list of cases')
+    .setDescription('Display all recorded warning cases and infractions for a specified member')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User (optional)')
@@ -24,33 +24,32 @@ module.exports = {
     // Check for ModRole permission
     if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     
-    let enabledms = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Error!`)
-        .setDescription(`Please enable your dms with this server to that I can send you the information you requested!`);
-    
-    const warnsDB = new JSONDatabase('warns');
+    const warnsDB = DatabaseManager.getWarnsDB();
     const userOption = interaction.options.getUser('user');
-    const user = userOption ? await interaction.guild.members.fetch(userOption.id).catch(() => null) : interaction.member;
-    
-    warnsDB.ensure(user.id, {points: 0, warns: {}});
-    
-    if (user.id == interaction.user.id) {
-      const em = new EmbedBuilder()
-        .setTitle("Warnings")
-        .setColor(0xFAA61A)
-        .setDescription(`\`${Object.keys(warnsDB.get(user.id).warns).length != 0 ? Object.keys(warnsDB.get(user.id).warns).join('\n') : 'You have not been warned before'}\``);
-      
-      await interaction.user.send({ embeds: [em] }).catch(err => interaction.reply({ embeds: [enabledms], flags: MessageFlags.Ephemeral }));
-      await interaction.reply({ content: 'I have sent you a dm with your requested information!', flags: MessageFlags.Ephemeral });
-    } else {
-      const em = new EmbedBuilder()
-        .setTitle("Warnings")
-        .setColor(0xFAA61A)
-        .setDescription(`\`${Object.keys(warnsDB.get(user.id).warns).length != 0 ? Object.keys(warnsDB.get(user.id).warns).join('\n') : 'User has not been warned before'}\``);
-      
-      await interaction.user.send({ embeds: [em] }).catch(err => interaction.reply({ embeds: [enabledms], flags: MessageFlags.Ephemeral }));
-      await interaction.reply({ content: 'I have sent you a dm with your requested information!', flags: MessageFlags.Ephemeral });
-    }
+
+    // Use the provided user id directly so it works even if the user is not in the guild
+    const targetUserId = userOption ? userOption.id : interaction.user.id;
+    const viewingSelf = targetUserId === interaction.user.id;
+
+    warnsDB.ensure(targetUserId, { points: 0, warns: {} });
+
+    const targetUserObj = await interaction.client.users.fetch(targetUserId).catch(() => null);
+    const userLabel = targetUserObj ? `${targetUserObj.tag} (${targetUserId})` : `${targetUserId}`;
+
+    const warns = warnsDB.get(targetUserId)?.warns || {};
+    const warnKeys = Object.keys(warns);
+    const noneMsg = viewingSelf ? 'You have not been warned before' : 'User has not been warned before';
+    const list = warnKeys.length ? warnKeys.map((id, idx) => `${idx + 1}. ${id}`).join('\n') : noneMsg;
+
+    const em = new EmbedBuilder()
+      .setTitle("Warnings")
+      .setColor(0xFAA61A)
+      .addFields(
+        { name: "User", value: userLabel },
+        { name: "Total warnings", value: `${warnKeys.length}` },
+        { name: "Cases", value: `\`${list}\`` }
+      );
+
+    await interaction.reply({ embeds: [em], flags: MessageFlags.Ephemeral });
   }
 }

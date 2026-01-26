@@ -1,5 +1,5 @@
 const moment = require("moment");
-const JSONDatabase = require('../../Functions/Database');
+const DatabaseManager = require('../../Functions/DatabaseManager');
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 require("moment-duration-format");
@@ -9,11 +9,16 @@ const { channelLog } = require("../../Config/constants/channel.json")
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('unban')
-    .setDescription('Unban a user from the server')
+    .setDescription('Revoke a server ban by providing either a user ID or ban case identifier')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User to unban')
-        .setRequired(true)
+        .setRequired(false)
+    )
+    .addStringOption(option =>
+      option.setName('caseid')
+        .setDescription('Case ID of the ban')
+        .setRequired(false)
     )
     .setDefaultMemberPermissions(0x8),
   category: 'management',
@@ -27,11 +32,48 @@ module.exports = {
       return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     }
     
-    const warnsDB = new JSONDatabase('warns');
-    const user = interaction.options.getUser('user');
-    
-    warnsDB.ensure(user.id, {points: 0, warns: {}});
-    await interaction.guild.members.unban(user.id, `unbanned by admin - ${interaction.user.tag}`).catch(err => {
+    const warnsDB = DatabaseManager.getWarnsDB();
+    const caseIdOption = interaction.options.getString('caseid');
+    const userOption = interaction.options.getUser('user');
+
+    // Resolve target user by case ID if provided, else by user option
+    let targetUserId = userOption ? userOption.id : null;
+    let resolvedCaseId = caseIdOption || null;
+    let banEntry = null;
+
+    if (caseIdOption) {
+      const allWarns = warnsDB.all();
+      for (const [userId, data] of Object.entries(allWarns)) {
+        const entry = data?.warns?.[caseIdOption];
+        if (entry && entry.reason && entry.reason.toLowerCase().includes('(banned)')) {
+          targetUserId = userId;
+          banEntry = entry;
+          break;
+        }
+      }
+      if (!targetUserId || !banEntry) {
+        const notFound = new EmbedBuilder()
+          .setColor(0xF04747)
+          .setTitle('❌ Invalid Case ID')
+          .setDescription('No ban found for the provided case ID.');
+        return interaction.reply({ embeds: [notFound], flags: MessageFlags.Ephemeral });
+      }
+    }
+
+    if (!targetUserId) {
+      const needParam = new EmbedBuilder()
+        .setColor(0xF04747)
+        .setTitle('❌ Missing Input')
+        .setDescription('Provide either a user or a case ID to unban.');
+      return interaction.reply({ embeds: [needParam], flags: MessageFlags.Ephemeral });
+    }
+
+    const targetUser = await interaction.client.users.fetch(targetUserId).catch(() => null);
+    const targetLabel = targetUser ? `${targetUser.tag} (${targetUser.id})` : targetUserId;
+
+    const unbanReason = `unbanned by admin - ${interaction.user.tag}${resolvedCaseId ? ` - case ${resolvedCaseId}` : ''}`;
+
+    await interaction.guild.members.unban(targetUserId, unbanReason).catch(err => {
       console.error('Error unbanning user:', err);
     });
     const clearedWarnsLog = interaction.client.channels.cache.get(channelLog);
@@ -40,7 +82,8 @@ module.exports = {
       .setColor(0x43B581)
       .addFields(
         { name: "👮 Administrator", value: `${interaction.user.tag} (${interaction.user.id})` },
-        { name: "👤 User", value: `${user.tag} (${user.id})` }
+        { name: "👤 User", value: targetLabel },
+        { name: "🔑 Case ID", value: resolvedCaseId ? `\`${resolvedCaseId}\`` : 'N/A' }
       )
       .setFooter({ text: `Unbanned by ${interaction.user.username}` })
       .setTimestamp();
@@ -50,7 +93,8 @@ module.exports = {
     const successEmbed = new EmbedBuilder()
       .setColor(0x43B581)
       .setTitle('✅ Successfully Unbanned')
-      .setDescription(`**${user.tag}** has been unbanned!`);
+      .setDescription(`**${targetLabel}** has been unbanned!`)
+      .addFields({ name: "🔑 Case ID", value: resolvedCaseId ? `\`${resolvedCaseId}\`` : 'N/A' });
     
     return interaction.reply({ embeds: [successEmbed], flags: MessageFlags.Ephemeral });
   }

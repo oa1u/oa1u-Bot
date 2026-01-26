@@ -1,15 +1,15 @@
 const moment = require("moment");
-const JSONDatabase = require('../../Functions/Database');
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 require("moment-duration-format");
 const { AdminRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
+const DatabaseManager = require('../../Functions/DatabaseManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('clearwarns')
-    .setDescription('Clear all warnings of a user')
+    .setDescription('Clear all warning infractions from a member\'s complete disciplinary history')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User to clear warnings from')
@@ -27,16 +27,14 @@ module.exports = {
     
     if(!interaction.member.roles.cache.has(AdminRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     
-    const warnsDB = new JSONDatabase('warns');
-    
-    warnsDB.ensure(user.id, {points: 0, warns: {}});
-    const userBanned = warnsDB.get(user.id).points >= 5;
+    const userBanned = DatabaseManager.isUserBanned(user.id);
     if (userBanned) {
       await interaction.guild.members.unban(user.id, `${interaction.user.tag} - warnings cleared`).catch(err => {
         console.error('Error unbanning user:', err);
       });
     }
-    warnsDB.delete(user.id);
+    DatabaseManager.clearUserWarns(user.id);
+    
     const clearedWarnsLog = interaction.client.channels.cache.get(channelLog);
     const em = new EmbedBuilder()
       .setTitle("🧹 Warnings Cleared")

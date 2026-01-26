@@ -1,17 +1,16 @@
 const moment = require("moment");
-const JSONDatabase = require('../../Functions/Database');
 require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const { ModRole } = require("../../Config/constants/roles.json");
-const { channelLog } = require("../../Config/constants/channel.json")
-const { serverID } = require("../../Config/main.json")
-
+const { generateCaseId } = require("../../Events/caseId");
+const { sendErrorReply, sendSuccessReply, createModerationEmbed } = require("../../Functions/EmbedBuilders");
+const { canModerateMember, addCase, sendModerationDM, logModerationAction } = require("../../Functions/ModerationHelper");
+const DatabaseManager = require('../../Functions/DatabaseManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('kick')
-    .setDescription('Kick a member')
+    .setDescription('Remove a member from the server with a specified reason')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User to kick')
@@ -24,99 +23,85 @@ module.exports = {
     ),
   category: 'moderation',
   async execute(interaction) {
-    const toWarn = interaction.options.getUser('user');
-    const toWarnMember = await interaction.guild.members.fetch(toWarn.id);
-    const reason = interaction.options.getString('reason');
-    const warnsDB = new JSONDatabase('warns');
-    const cannedMsgs = new JSONDatabase('cannedMsgs');
+    const targetUser = interaction.options.getUser('user');
+    const reasonInput = interaction.options.getString('reason');
     
-    let Prohibited = new EmbedBuilder()
-      .setColor(0xF04747)
-        .setTitle(`❌ No Permission`)
-        .setDescription(`You need the Moderator role to use this command!`);
-    
-    let validuser = new EmbedBuilder()
-      .setColor(0xF04747)
-        .setTitle(`❌ Invalid User`)
-        .setDescription(`Please mention a valid user!`);
-    
-    let cantkickyourself = new EmbedBuilder()
-      .setColor(0xF04747)
-        .setTitle(`❌ Error`)
-        .setDescription(`You cannot kick yourself!`);
-    
-    let samerankorhigher = new EmbedBuilder()
-      .setColor(0xF04747)
-        .setTitle(`❌ Role Hierarchy`)
-        .setDescription(`You cannot kick that user due to role hierarchy!`);
-    
-    const server = interaction.client.guilds.cache.get(serverID);
-    if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
-    
-    if (!toWarnMember) return interaction.reply({ embeds: [validuser], flags: MessageFlags.Ephemeral });
-    
-    warnsDB.ensure(toWarn.id, {warns: {}});
-    let finalReason = cannedMsgs.has(reason) ? cannedMsgs.get(reason) : reason;
-    
-    if (interaction.member.id == toWarn.id) return interaction.reply({ embeds: [cantkickyourself], flags: MessageFlags.Ephemeral });
-    if (server.members.cache.get(interaction.member.id).roles.highest.rawPosition <= (server.members.cache.get(toWarn.id) ? server.members.cache.get(toWarn.id).roles.highest.rawPosition : 0)) return interaction.reply({ embeds: [samerankorhigher], flags: MessageFlags.Ephemeral });
-    
-    const warnLogs = server.channels.cache.get(channelLog);
-    
-    function makeid(length) {
-      var result = '';
-      var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      var charactersLength = characters.length;
-      for (var i = 0; i < length; i++) {
-         result += characters.charAt(Math.floor(Math.random() * charactersLength));
-      }
-      return result;
+    // Check for canned messages
+    const reason = DatabaseManager.getResolvedReason(reasonInput);
+
+    // Check permissions and hierarchy
+    if (!await canModerateMember(interaction, targetUser, 'kick')) {
+      return;
     }
-    
-    const caseID = makeid(10);
-    const em = new EmbedBuilder()
-      .setTitle(`👢 Kick Case - ${caseID}`)
-      .setColor(0xFAA61A)
-      .addFields(
-        { name: "👤 Member", value: `${toWarn.tag} (${toWarn.id})`, inline: true },
-        { name: "🛡️ Moderator", value: `${interaction.user.tag} (${interaction.user.id})`, inline: true },
-        { name: "📝 Reason", value: `\`${finalReason}\``, inline: false }
-      )
-      .setFooter({ text: `Kicked by ${interaction.user.tag}` })
-      .setTimestamp();
-    
-    await warnLogs.send({ embeds: [em] });
-    
-    const Server = interaction.guild.name;
-    const emUser = new EmbedBuilder()
-      .setTitle("👢 You Have Been Kicked")
-      .setColor(0xFAA61A)
-      .setDescription(`You were kicked from **${Server}**`)
-      .addFields(
-        { name: "📝 Reason", value: `${finalReason}` },
-        { name: "🔑 Case ID", value: `\`${caseID}\`` },
-        { name: "⚡ Note", value: "Please avoid repeating this behavior!" }
-      )
-      .setTimestamp();
-    
-    await toWarn.send({ embeds: [emUser] }).catch(err => err);
-    
-    const emChan = new EmbedBuilder()
-      .setTitle("✅ Member Kicked")
-      .setDescription(`Successfully kicked **${toWarn.tag}**`)
-      .setColor(0x43B581)
-      .addFields(
-        { name: "🔑 Case ID", value: `\`${caseID}\`` }
-      )
-      .setTimestamp();
-    
-    // Perform the kick before replying
-    await toWarnMember.kick(finalReason).catch(err => {
-      console.error(`Error kicking ${toWarn.tag}:`, err);
+
+    // Fetch member to verify they exist in guild
+    const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+    if (!targetMember) {
+      await sendErrorReply(
+        interaction,
+        'Invalid User',
+        `**${targetUser.tag}** is not in this server!`
+      );
+      return;
+    }
+
+    // Generate case ID
+    const caseID = generateCaseId('KICK');
+
+    // Create logging embed
+    const logEmbed = createModerationEmbed({
+      action: '👢 KICK',
+      target: targetUser,
+      moderator: interaction.user,
+      reason: reason,
+      caseId: caseID,
+      color: 0xFAA61A
     });
-    
-    warnsDB.set(toWarn.id, {moderator: interaction.user.id, reason: `(kicked) - ${finalReason}`, date: moment(Date.now()).format('LL')}, `warns.${caseID}`);
-    
-    return await interaction.reply({ embeds: [emChan], flags: MessageFlags.Ephemeral });
+
+    // Send DM to user
+    const dmEmbed = new EmbedBuilder()
+      .setTitle('👢 You Have Been Kicked')
+      .setColor(0xFAA61A)
+      .setDescription(`You were kicked from **${interaction.guild.name}**`)
+      .addFields(
+        { name: '📝 Reason', value: reason, inline: false },
+        { name: '🔑 Case ID', value: `\`${caseID}\``, inline: true },
+        { name: '⚡ Note', value: 'Please avoid repeating this behavior!', inline: true }
+      )
+      .setTimestamp();
+
+    const dmSent = await sendModerationDM(targetUser, dmEmbed);
+
+    // Log the action
+    await logModerationAction(interaction, logEmbed);
+
+    // Add to database
+    addCase(targetUser.id, caseID, {
+      moderator: interaction.user.id,
+      reason: `(kicked) - ${reason}`,
+      date: moment(Date.now()).format('LL'),
+      type: 'KICK'
+    });
+
+    // Perform the kick
+    try {
+      await targetMember.kick(reason);
+      
+      // Send success response
+      await sendSuccessReply(
+        interaction,
+        'Member Kicked',
+        `Successfully kicked **${targetUser.tag}**\n` +
+        `Case ID: \`${caseID}\`\n` +
+        `DM Sent: ${dmSent ? '✅' : '❌'}`
+      );
+    } catch (err) {
+      console.error(`Error kicking ${targetUser.tag}:`, err.message);
+      await sendErrorReply(
+        interaction,
+        'Kick Failed',
+        `Could not kick **${targetUser.tag}**\nError: ${err.message}`
+      );
+    }
   }
-}
+};

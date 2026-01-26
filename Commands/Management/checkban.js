@@ -1,12 +1,12 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const JSONDatabase = require('../../Functions/Database');
+const DatabaseManager = require('../../Functions/DatabaseManager');
 const { ModRole, AdminRole } = require("../../Config/constants/roles.json");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('checkban')
-    .setDescription('Check ban information using a case ID')
+    .setDescription('Look up detailed ban information and case details using the case identifier')
     .addStringOption(option =>
       option.setName('caseid')
         .setDescription('The case ID to look up')
@@ -27,7 +27,7 @@ module.exports = {
       return interaction.reply({ embeds: [noPermEmbed], flags: MessageFlags.Ephemeral });
     }
 
-    const warnsDB = new JSONDatabase('warns');
+    const warnsDB = DatabaseManager.getWarnsDB();
     const allData = warnsDB.all();
 
     // Search through all users for the case ID

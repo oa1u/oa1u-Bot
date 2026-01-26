@@ -1,16 +1,16 @@
 const moment = require("moment");
-const JSONDatabase = require('../../Functions/Database');
 require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const { ModRole } = require("../../Config/constants/roles.json");
-const { channelLog } = require("../../Config/constants/channel.json")
-const { serverID } = require("../../Config/main.json")
+const { generateCaseId } = require("../../Events/caseId");
+const { sendErrorReply, sendSuccessReply, createModerationEmbed } = require("../../Functions/EmbedBuilders");
+const { canModerateMember, addCase, sendModerationDM, logModerationAction } = require("../../Functions/ModerationHelper");
+const DatabaseManager = require('../../Functions/DatabaseManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('warn')
-    .setDescription('Warn a member')
+    .setDescription('Issue a warning to a member and log it with a case ID')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User to warn')
@@ -23,92 +23,77 @@ module.exports = {
     ),
   category: 'moderation',
   async execute(interaction) {
-    const toWarn = interaction.options.getUser('user');
-    const reason = interaction.options.getString('reason');
-    const warnsDB = new JSONDatabase('warns');
-    const cannedMsgs = new JSONDatabase('cannedMsgs');
+    const targetUser = interaction.options.getUser('user');
+    const reasonInput = interaction.options.getString('reason');
     
-    let Prohibited = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Prohibited User`)
-        .setDescription(`You have to be in the moderation team to be able to use this command!`);
-    
-    let validuser = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Error`)
-        .setDescription(`Mention a valid user`);
-    
-    let cantwarnyourself = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Error`)
-        .setDescription(`You cant warn yourself`);
-    
-    let samerankorhigher = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Error`)
-        .setDescription(`You can't warn that user due to role hierarchy`);
-    
-    const server = interaction.client.guilds.cache.get(serverID);
-    if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
-    
-    const toWarnMember = await interaction.guild.members.fetch(toWarn.id).catch(() => null);
-    const moderator = interaction.member;
-    if (!toWarnMember) return interaction.reply({ embeds: [validuser], flags: MessageFlags.Ephemeral });
-    
-    warnsDB.ensure(toWarn.id, {warns: {}});
-    let finalReason = cannedMsgs.has(reason) ? cannedMsgs.get(reason) : reason;
-    
-    if (moderator.id == toWarn.id) return interaction.reply({ embeds: [cantwarnyourself], flags: MessageFlags.Ephemeral });
-    if (server.members.cache.get(moderator.id).roles.highest.rawPosition <= (server.members.cache.get(toWarn.id) ? server.members.cache.get(toWarn.id).roles.highest.rawPosition : 0)) return interaction.reply({ embeds: [samerankorhigher], flags: MessageFlags.Ephemeral });
-    
-    const warnLogs = server.channels.cache.get(channelLog);
-    
-    function makeid(length) {
-      var result = '';
-      var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      var charactersLength = characters.length;
-      for (var i = 0; i < length; i++) {
-         result += characters.charAt(Math.floor(Math.random() * charactersLength));
-      }
-      return result;
+    // Check for canned messages
+    const reason = DatabaseManager.getResolvedReason(reasonInput);
+
+    // Check permissions and hierarchy
+    if (!await canModerateMember(interaction, targetUser, 'warn')) {
+      return;
     }
-    
-    const caseID = makeid(10);
-    const Server = interaction.guild.name;
-    const em = new EmbedBuilder()
-      .setTitle(`Case - ${caseID}`)
+
+    // Fetch member
+    const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+    if (!targetMember) {
+      await sendErrorReply(
+        interaction,
+        'Invalid User',
+        `**${targetUser.tag}** is not in this server!`
+      );
+      return;
+    }
+
+    // Generate case ID
+    const caseID = generateCaseId('WARN');
+
+    // Create logging embed
+    const logEmbed = createModerationEmbed({
+      action: '⚠️ WARN',
+      target: targetUser,
+      moderator: interaction.user,
+      reason: reason,
+      caseId: caseID,
+      color: 0xFAA61A
+    });
+
+    // Send DM to user
+    const dmEmbed = new EmbedBuilder()
+      .setTitle('⚠️ You Have Received a Warning')
       .setColor(0xFAA61A)
+      .setDescription(`You received a warning in **${interaction.guild.name}**`)
       .addFields(
-        { name: "Member", value: `${toWarn.username} (${toWarn.id})` },
-        { name: "Moderator", value: `${moderator.user.username} (${moderator.id})` },
-        { name: "Reason", value: `\`(warned) - ${finalReason}\`` }
+        { name: '📝 Reason', value: reason, inline: false },
+        { name: '🔑 Case ID', value: `\`${caseID}\``, inline: true },
+        { name: '⚡ Note', value: 'Please avoid this behavior in the future!', inline: true }
       )
-      .setFooter({ text: `By: ${moderator.user.username} (${moderator.id})` });
-    
-    await warnLogs.send({ embeds: [em] });
-    
-    const emUser = new EmbedBuilder()
-      .setTitle("Warned")
-      .setColor(0xFAA61A)
-      .setDescription(`You were warned in **${Server}** for ${finalReason}, please don't do it again!`)
-      .addFields({ name: "Case ID", value: `\`${caseID}\`` });
-    
-    await toWarn.send({ embeds: [emUser] }).catch(err => err);
-    
-    const emChan = new EmbedBuilder()
-      .setDescription(`You have succesfully warned **${toWarn.tag}**.`)
-      .setColor(0xFAA61A);
-    
-    await interaction.reply({ embeds: [emChan], flags: MessageFlags.Ephemeral });
-    
-    // Store warning information in database
-    const userData = warnsDB.get(toWarn.id) || { warns: {} };
-    userData.warns[caseID] = {
-      moderator: moderator.id,
-      reason: `(warned) - ${finalReason}`,
-      date: moment(Date.now()).format('LL')
-    };
-    warnsDB.set(toWarn.id, userData);
-    return;
+      .setTimestamp();
+
+    const dmSent = await sendModerationDM(targetUser, dmEmbed);
+
+    // Log the action
+    await logModerationAction(interaction, logEmbed);
+
+    // Add to database
+    addCase(targetUser.id, caseID, {
+      moderator: interaction.user.id,
+      reason: `(warned) - ${reason}`,
+      date: moment(Date.now()).format('LL'),
+      type: 'WARN'
+    });
+
+    // Get total warns for user
+    const totalWarns = DatabaseManager.getUserWarnsCount(targetUser.id) + 1;
+
+    // Send success response with warn count
+    await sendSuccessReply(
+      interaction,
+      'Warning Issued',
+      `Successfully warned **${targetUser.tag}**\n` +
+      `Case ID: \`${caseID}\`\n` +
+      `Total Warnings: **${totalWarns}**\n` +
+      `DM Sent: ${dmSent ? '✅' : '❌'}`
+    );
   }
-}
+};

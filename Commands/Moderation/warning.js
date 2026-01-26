@@ -1,5 +1,5 @@
 const moment = require("moment");
-const JSONDatabase = require('../../Functions/Database');
+const DatabaseManager = require('../../Functions/DatabaseManager');
 require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
@@ -8,7 +8,7 @@ const { ModRole } = require("../../Config/constants/roles.json");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('warning')
-    .setDescription('Get information about a case')
+    .setDescription('Retrieve detailed information about a specific warning case by its unique ID')
     .addStringOption(option =>
       option.setName('caseid')
         .setDescription('Case ID')
@@ -29,53 +29,54 @@ module.exports = {
     // Check for ModRole permission
     if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     
-    let enabledms = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Error!`)
-        .setDescription(`Please enable your dms with this server to that I can send you the information you requested!`);
-    
     let caseidincorrect = new EmbedBuilder()
       .setColor(0xFAA61A)
         .setTitle(`Error`)
         .setDescription(`Invalid case ID`);
     
-    let warninginfo = new EmbedBuilder()
-      .setColor(0xFAA61A)
-        .setTitle(`Success`)
-        .setDescription(`I have sent you a dm with your requested information!`);
-    
-    const warnsDB = new JSONDatabase('warns');
+    const warnsDB = DatabaseManager.getWarnsDB();
     const caseID = interaction.options.getString('caseid');
     const userOption = interaction.options.getUser('user');
-    const user = userOption || interaction.user;
-    
-    warnsDB.ensure(user.id, {points: 0, warns: {}});
-    
-    if (!warnsDB.get(user.id).warns[caseID]) return interaction.reply({ content: 'Case ID not found', flags: MessageFlags.Ephemeral });
-    
-    if (user.id == interaction.user.id) {
-      const em = new EmbedBuilder()
-        .setTitle(caseID)
-        .setColor(0xFAA61A)
-        .addFields(
-          { name: "Reason", value: warnsDB.get(user.id).warns[caseID].reason },
-          { name: "Date", value: warnsDB.get(user.id).warns[caseID].date }
-        );
-      
-      await interaction.user.send({ embeds: [em] }).catch(err => interaction.reply({ embeds: [enabledms], flags: MessageFlags.Ephemeral }));
-      await interaction.reply({ embeds: [warninginfo], flags: MessageFlags.Ephemeral });
-    } else {
-      const em = new EmbedBuilder()
-        .setTitle(caseID)
-        .setColor(0xFAA61A)
-        .addFields(
-          { name: "Reason", value: warnsDB.get(user.id).warns[caseID].reason },
-          { name: "Moderator ID", value: warnsDB.get(user.id).warns[caseID].moderator },
-          { name: "Date", value: warnsDB.get(user.id).warns[caseID].date }
-        );
-      
-      await interaction.user.send({ embeds: [em] }).catch(err => interaction.reply({ embeds: [enabledms], flags: MessageFlags.Ephemeral }));
-      await interaction.reply({ embeds: [warninginfo], flags: MessageFlags.Ephemeral });
+
+    // Try to resolve the warning entry either by the provided user or by scanning all stored users
+    let targetUserId = userOption ? userOption.id : null;
+    let warningEntry = null;
+
+    if (targetUserId) {
+      const userRecord = warnsDB.get(targetUserId);
+      warningEntry = userRecord?.warns?.[caseID] || null;
     }
+
+    if (!warningEntry) {
+      const allWarns = warnsDB.all();
+      for (const [userId, data] of Object.entries(allWarns)) {
+        const entry = data?.warns?.[caseID];
+        if (entry) {
+          targetUserId = userId;
+          warningEntry = entry;
+          break;
+        }
+      }
+    }
+
+    if (!warningEntry || !targetUserId) return interaction.reply({ embeds: [caseidincorrect], flags: MessageFlags.Ephemeral });
+
+    const targetUser = await interaction.client.users.fetch(targetUserId).catch(() => null);
+    const userLabel = targetUser ? `${targetUser.tag} (${targetUserId})` : targetUserId;
+    const moderatorLabel = warningEntry.moderator ? `<@${warningEntry.moderator}> (${warningEntry.moderator})` : 'Unknown';
+    const totalWarns = Object.keys(warnsDB.get(targetUserId)?.warns || {}).length;
+
+    const em = new EmbedBuilder()
+      .setTitle(`Case ${caseID}`)
+      .setColor(0xFAA61A)
+      .addFields(
+        { name: "User", value: userLabel },
+        { name: "Reason", value: warningEntry.reason || 'No reason recorded' },
+        { name: "Moderator", value: moderatorLabel },
+        { name: "Date", value: warningEntry.date || 'No date recorded' },
+        { name: "Total warnings for user", value: `${totalWarns}` }
+      );
+    
+    await interaction.reply({ embeds: [em], flags: MessageFlags.Ephemeral });
   }
 }

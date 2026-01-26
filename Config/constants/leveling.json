@@ -1,0 +1,23 @@
+{
+    "config": {
+        "baseXP": 15,
+        "randomXP": 10,
+        "cooldown": 60000,
+        "levelMultiplier": 1.5,
+        "baseRequirement": 100
+    },
+    "multipliers": {
+        "longMessage": 1.2,
+        "hasImage": 1.15,
+        "hasLink": 1.1
+    },
+    "levelRoles": {
+        "role5": "",
+        "role10": "",
+        "role25": "",
+        "role50": "",
+        "role75": "",
+        "role100": ""
+    }
+}
+

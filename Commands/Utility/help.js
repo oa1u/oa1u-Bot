@@ -5,7 +5,7 @@ const { AdminRole, ModRole } = require("../../Config/constants/roles.json");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Lists all available commands')
+    .setDescription('Display all available commands and their descriptions organized by category')
     .addStringOption(option =>
       option.setName('category')
         .setDescription('Command category to display')
@@ -14,7 +14,9 @@ module.exports = {
           { name: 'Management', value: 'management' },
           { name: 'Moderation', value: 'moderation' },
           { name: 'Utility', value: 'utility' },
-          { name: 'Ticket', value: 'ticket' },
+          { name: 'Leveling', value: 'levels' },
+          { name: 'Fun', value: 'fun' },
+          { name: 'Ticket', value: 'ticket' }
         )
     ),
   category: 'utility',
@@ -35,6 +37,8 @@ module.exports = {
       management: '⚙️',
       moderation: '🛡️',
       utility: '🔧',
+      leveling: '📈',
+      fun: '🎮',
       ticket: '🎫'
     };
 
@@ -47,6 +51,8 @@ module.exports = {
       categoryList.push('🛡️ **Moderation** - Moderation & safety commands');
     }
     categoryList.push('🔧 **Utility** - Helpful utility commands');
+    categoryList.push('📈 **Leveling** - Level up and rank commands');
+    categoryList.push('🎮 **Fun** - Games and entertainment commands');
     categoryList.push('🎫 **Ticket** - Ticket system commands');
 
     let embedhelp = new EmbedBuilder()
@@ -55,16 +61,21 @@ module.exports = {
         name: `${interaction.client.user.username} Help Menu`, 
         iconURL: interaction.client.user.displayAvatarURL() 
       })
-      .setDescription(`Welcome to the help menu! Select a category below to view available commands.\n\n**How to use:** \`/help [category]\``)
+      .setDescription(`Welcome to the help menu!\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nSelect a category below to view available commands.\n\n**Usage:** \`/help [category]\`\n**Example:** \`/help moderation\``)
       .addFields(
         { 
-          name: '📚 Command Categories', 
-          value: categoryList.join('\n'), 
+          name: '📚 Available Categories', 
+          value: categoryList.join('\n') + '\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 
           inline: false 
         },
         { 
-          name: '🔗 Links', 
-          value: `[Server Invite](${ServerInvite})`, 
+          name: '💡 Tip', 
+          value: 'Commands are filtered based on your permissions. Admin and Moderator commands are only visible to users with the appropriate roles.', 
+          inline: false 
+        },
+        { 
+          name: '🔗 Server Invite', 
+          value: `[Click here to invite friends](${ServerInvite})`, 
           inline: false 
         }
       )
@@ -90,21 +101,13 @@ module.exports = {
       });
     }
 
-    const categoryEmbed = new EmbedBuilder()
-      .setColor(0x5865F2)
-      .setAuthor({ 
-        name: `${ChangeLatter(category)} Commands`, 
-        iconURL: interaction.client.user.displayAvatarURL() 
-      })
-      .setDescription(`${categoryIcons[category]} All commands in the **${ChangeLatter(category)}** category:\n`)
-      .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
+    // Count commands first
     let count = 0;
     const commands = [];
     for (const [, command] of interaction.client.slashCommands) {
       if (command.category === category) {
-        commands.push(`\`/${command.data.name}\` - ${command.data.description || 'No description'}`);
+        const emoji = getCommandEmoji(command.data.name);
+        commands.push(`${emoji} \`/${command.data.name}\` - ${command.data.description || 'No description'}`);
         count++;
       }
     }
@@ -113,12 +116,68 @@ module.exports = {
       return interaction.reply({ content: `No commands found in the ${category} category.`, flags: MessageFlags.Ephemeral });
     }
 
+    const categoryEmbed = new EmbedBuilder()
+      .setColor(0x5865F2)
+      .setAuthor({ 
+        name: `${ChangeLatter(category)} Commands`, 
+        iconURL: interaction.client.user.displayAvatarURL() 
+      })
+      .setDescription(`${categoryIcons[category]} **${ChangeLatter(category)} Category**\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAll available commands in this category are listed below.`)
+      .setFooter({ text: `Requested by ${interaction.user.username} • ${count} commands`, iconURL: interaction.user.displayAvatarURL() })
+      .setTimestamp();
+
     categoryEmbed.addFields({
-      name: `Total Commands: ${count}`,
-      value: commands.join('\n'),
+      name: `📝 Commands (${count} total)`,
+      value: commands.join('\n') + '\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       inline: false
     });
 
     return interaction.reply({ embeds: [categoryEmbed], flags: MessageFlags.Ephemeral });
   }
+};
+
+// Helper function to get emoji for commands
+function getCommandEmoji(commandName) {
+  const emojiMap = {
+    // Management
+    'announce': '📢',
+    'eannounce': '📢',
+    'checkban': '🔍',
+    'unban': '🚫',
+    'clearwarning': '🧹',
+    'clearwarns': '🧹',
+    // Moderation
+    'warn': '⚠️',
+    'warning': '📋',
+    'warns': '📊',
+    'ban': '🔨',
+    'kick': '👢',
+    'clear': '🧹',
+    'deletemsg': '🗑️',
+    // Utility
+    'help': '❓',
+    'userinfo': '👤',
+    'serverinfo': '🏰',
+    'joke': '😂',
+    'define': '📖',
+    'poll': '📊',
+    'remind': '🔔',
+    'verify': '✅',
+    // Leveling
+    'rank': '🏆',
+    'leaderboard': '🥇',
+    'setlevel': '⚡',
+    // Fun
+    '8ball': '🎱',
+    'trivia': '🧠',
+    // Ticket
+    'ticket': '🎫',
+    'close': '🔒',
+    'markhandled': '✅',
+    'claim': '👤',
+    'adduser': '➕',
+    'removeuser': '➖'
+  };
+  
+  return emojiMap[commandName] || '❯';
 };

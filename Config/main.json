@@ -1,7 +1,8 @@
 {
 	"unknownCommandMessage": ":x: That command doesn't exist!",
 	"OwnerID": "",
-    "Version": "2.1.0",
+    "Version": "3.0.0",
 	"ServerInvite": "",
-	"serverID": ""
+	"serverID": "",
+	"AppealLink": ""
 }

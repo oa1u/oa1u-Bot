@@ -1,16 +1,28 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { ChannelType, PermissionFlagsBits, MessageFlags } = require('discord.js');
-const { ticketCategory } = require("../../Config/constants/channel.json");
-
+const { ticketCategory, ticketLog } = require("../../Config/constants/channel.json");
+const { AdminRole } = require("../../Config/constants/roles.json");
+const { createErrorEmbed, createInfoEmbed } = require("../../Functions/EmbedBuilders");
+const DatabaseManager = require('../../Functions/DatabaseManager');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ticket')
-    .setDescription('Create a support ticket')
+    .setDescription('Open a private support ticket channel to receive assistance from the staff team')
     .addStringOption(option =>
       option.setName('reason')
         .setDescription('Why are you opening a ticket?')
         .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('priority')
+        .setDescription('Ticket priority level')
+        .setRequired(false)
+        .addChoices(
+          { name: '🟢 Low', value: 'low' },
+          { name: '🟡 Medium', value: 'medium' },
+          { name: '🔴 High', value: 'high' }
+        )
     ),
   category: 'ticket',
   async execute(interaction) {
@@ -19,31 +31,34 @@ module.exports = {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       
       const reason = interaction.options.getString('reason');
+      const priority = interaction.options.getString('priority') || 'medium';
+      const priorityEmoji = priority === 'high' ? '🔴' : priority === 'low' ? '🟢' : '🟡';
+      const priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
       
       // Verify ticket category exists
       const categoryChannel = interaction.guild.channels.cache.get(ticketCategory);
       if (!categoryChannel) {
-        return await interaction.editReply({
-          content: `❌ Ticket category not found! Please contact an administrator.`
-        });
+        const errorEmbed = createErrorEmbed(
+          'Category Not Found',
+          `Ticket category is not configured! Please contact an <@&${AdminRole}>.`
+        );
+        return await interaction.editReply({ embeds: [errorEmbed] });
       }
       
       // Check if user already has an open ticket
       const existingTicket = interaction.guild.channels.cache.find(
-        ch => ch.name === `ticket-${interaction.user.username.toLowerCase()}` && 
+        ch => ch.name.startsWith(`ticket-${interaction.user.username.toLowerCase()}`) && 
               ch.parentId === categoryChannel.id
       );
       
       if (existingTicket) {
-        const errorEmbed = new EmbedBuilder()
-          .setColor(0xF04747)
-          .setTitle('❌ Ticket Already Exists')
-          .setDescription(`You already have an open ticket in this category!`)
-          .addFields(
-            { name: '🎫 Your Ticket', value: `<#${existingTicket.id}>`, inline: false },
-            { name: '💡 Note', value: 'Please use your existing ticket or close it first.', inline: false }
-          )
-          .setTimestamp();
+        const errorEmbed = createErrorEmbed(
+          'Ticket Already Exists',
+          `You already have an open ticket in this category!`
+        ).addFields(
+          { name: '🎫 Your Ticket', value: `<#${existingTicket.id}>`, inline: false },
+          { name: '💡 Note', value: 'Please use your existing ticket or close it first.', inline: false }
+        );
         
         return await interaction.editReply({ embeds: [errorEmbed] });
       }
@@ -90,14 +105,17 @@ module.exports = {
 
       // Send welcome message in ticket channel
       const welcomeEmbed = new EmbedBuilder()
-        .setColor(0x5865F2)
-        .setTitle('🎫 Support Ticket Created')
-        .setDescription(`Welcome ${interaction.user}!\n\nOur support team will be with you shortly. Please describe your issue in detail.`)
+        .setColor(priority === 'high' ? 0xF04747 : priority === 'low' ? 0x43B581 : 0x5865F2)
+        .setTitle(`${priorityEmoji} Support Ticket Created`)
+        .setDescription(`**Welcome ${interaction.user}!**\n\n━━━━━━━━━━━━━━━━━━━━━\n\nThank you for opening a support ticket. Our team will be with you shortly.\n\n**Please provide:**\n> 📖 A detailed description of your issue\n> 📸 Any relevant screenshots or evidence\n> ⏱️ When the issue started occurring`)
         .addFields(
-          { name: '📝 Reason', value: reason, inline: false },
-          { name: '❌ Close Ticket', value: 'Use `/close` or react with ❌ below', inline: false }
+          { name: '📝 Ticket Reason', value: `\`\`\`${reason || 'No reason provided'}\`\`\``, inline: false },
+          { name: '⚡ Priority Level', value: `${priorityEmoji} **${priorityLabel}**`, inline: true },
+          { name: '🕐 Created', value: `<t:${Math.floor(Date.now() / 1000)}:R>`, inline: true },
+          { name: '\u200b', value: '\u200b', inline: true },
+          { name: '🚫 Close Ticket', value: '> Use `/close` command\n> React with ❌ below\n> A transcript will be saved', inline: false }
         )
-        .setFooter({ text: 'Support Team' })
+        .setFooter({ text: '🎫 Support Team • We\'re here to help!' })
         .setTimestamp();
 
       const ticketMessage = await ticketChannel.send({
@@ -108,15 +126,49 @@ module.exports = {
       // Add close reaction
       await ticketMessage.react('❌').catch(console.error);
 
-      // Send confirmation to user
+      // Store ticket data in database
+      const ticketsDB = DatabaseManager.getDatabase('tickets');
+      ticketsDB.set(ticketChannel.id, {
+        userId: interaction.user.id,
+        userName: interaction.user.tag,
+        reason: reason,
+        priority: priority,
+        createdAt: Date.now(),
+        channelId: ticketChannel.id,
+        claimedBy: null,
+        status: 'open'
+      });
+
+      // Log ticket creation to logging channel
+      const logChannel = interaction.guild.channels.cache.get(ticketLog);
+      if (logChannel) {
+        const logEmbed = new EmbedBuilder()
+          .setColor(0x5865F2)
+          .setTitle('🎫 New Ticket Created')
+          .addFields(
+            { name: '👤 User', value: `${interaction.user.tag}\n\`${interaction.user.id}\``, inline: true },
+            { name: '🎫 Channel', value: `${ticketChannel}`, inline: true },
+            { name: '⚡ Priority', value: `${priorityEmoji} ${priorityLabel}`, inline: true },
+            { name: '📝 Reason', value: reason || 'No reason provided', inline: false }
+          )
+          .setTimestamp();
+        
+        await logChannel.send({ embeds: [logEmbed] });
+      }
+
+      // Send confirmation to user with info embed
       const successEmbed = new EmbedBuilder()
         .setColor(0x43B581)
         .setTitle('✅ Ticket Created Successfully')
-        .setDescription(`Your support ticket has been created!`)
+        .setDescription(`Your support ticket has been created!\n\n━━━━━━━━━━━━━━━━━━━━━\n\n**What happens next:**\n> 👥 Our support team has been notified\n> 📨 Check ${ticketChannel} for updates\n> ⏱️ Average response time: 5-15 minutes`)
         .addFields(
-          { name: '🎫 Ticket Channel', value: `${ticketChannel}`, inline: false },
-          { name: '📝 Reason', value: reason, inline: false }
+          { name: '🎫 Your Ticket', value: `${ticketChannel}`, inline: false },
+          { name: '📝 Reason', value: `\`${reason || 'No reason provided'}\``, inline: false },
+          { name: '⚡ Priority', value: `${priorityEmoji} **${priorityLabel}**`, inline: true },
+          { name: '🔔 Status', value: '🟢 **Open**', inline: true },
+          { name: '\u200b', value: '\u200b', inline: true }
         )
+        .setFooter({ text: 'Thank you for your patience!' })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [successEmbed] });
@@ -124,12 +176,15 @@ module.exports = {
     } catch (error) {
       console.error('Error in ticket command:', error);
       
-      const errorMessage = 'An error occurred while creating your ticket. Please try again or contact an administrator.';
+      const errorEmbed = createErrorEmbed(
+        'Ticket Creation Failed',
+        `An error occurred while creating your ticket. Please try again or contact an <@&${AdminRole}>.`
+      );
       
       if (interaction.deferred && !interaction.replied) {
-        await interaction.editReply({ content: errorMessage }).catch(console.error);
+        await interaction.editReply({ embeds: [errorEmbed] }).catch(console.error);
       } else if (!interaction.replied) {
-        await interaction.reply({ content: errorMessage, flags: MessageFlags.Ephemeral }).catch(console.error);
+        await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral }).catch(console.error);
       }
     }
   }

@@ -1,13 +1,13 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const JSONDatabase = require('../../Functions/Database');
+const DatabaseManager = require('../../Functions/DatabaseManager');
 const { AdminRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('clearwarn')
-    .setDescription('Clear a warning of a user')
+    .setDescription('Remove a specific warning case from a member\'s disciplinary record')
     .addUserOption(option =>
       option.setName('user')
         .setDescription('User to clear warning from')
@@ -32,7 +32,7 @@ module.exports = {
     
     const user = interaction.options.getUser('user');
     const caseID = interaction.options.getString('caseid');
-    const warnsDB = new JSONDatabase('warns');
+    const warnsDB = DatabaseManager.getWarnsDB();
     warnsDB.ensure(user.id, {points: 0, warns: {}});
     
     if (!warnsDB.get(user.id).warns[caseID]) {
