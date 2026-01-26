@@ -2,9 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discor
 const { CaptchaGenerator } = require("captcha-canvas");
 const { roleID } = require("../../Config/constants/roles.json");
 const { verificationchannel, captchalogchannel } = require("../../Config/constants/channel.json");
-const { Color } = require("../../Config/constants/misc.json");
 
-const colorInt = parseInt(Color.replace('#', ''), 16);
 const userCaptchaData = {};
 
 module.exports = {
@@ -64,7 +62,7 @@ module.exports = {
 
       const e0 = new EmbedBuilder()
         .setTitle(`🔐 Verification Required`)
-        .setColor(colorInt)
+        .setColor(0x43B581)
         .setFooter({ text: `Verification System` });
 
       const e1 = new EmbedBuilder(e0)
@@ -137,7 +135,7 @@ module.exports = {
                   { name: `**Captcha Code:**`, value: `${userCaptchaData[member.id].captchaValue}` },
                   { name: `**Role Given:**`, value: `${roleObj}` }
                 )
-                .setColor(colorInt);
+                .setColor(0x43B581);
 
               if (captchachannel) captchachannel.send({ embeds: [CaptchaLog] });
             }

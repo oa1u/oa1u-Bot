@@ -6,7 +6,6 @@ const { CaptchaGenerator } = require("captcha-canvas");
 const { roleID } = require("../Config/constants/roles.json");
 const { welcomeChannel, verificationchannel, captchalogchannel } = require("../Config/constants/channel.json");
 const { Version } = require("../Config/main.json");
-const { xEmoji, Color } = require("../Config/constants/misc.json");
 
 module.exports = {
     name: "guildMemberAdd",
@@ -47,7 +46,7 @@ module.exports = {
         console.log(`Generated captcha for ${member.user.tag}: ${captchaCode}`);
 
         if (!captchachannel) {
-            return member.send(`${xEmoji} Sorry, the verification system failed. Please contact an Administrator ASAP.`).catch(() => {});
+            return member.send(`❌ Sorry, the verification system failed. Please contact an Administrator ASAP.`).catch(() => {});
         }
 
         try {

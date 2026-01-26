@@ -5,9 +5,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { ModRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
-const { Color, serverID } = require("../../Config/constants/misc.json")
-
-const colorInt = parseInt(Color.replace('#', ''), 16);
+const { serverID } = require("../../Config/main.json")
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,22 +29,22 @@ module.exports = {
     const cannedMsgs = new JSONDatabase('cannedMsgs');
     
     let Prohibited = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
         .setTitle(`Prohibited User`)
         .setDescription(`You have to be in the moderation team to be able to use this command!`);
     
     let validuser = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
         .setTitle(`Error`)
         .setDescription(`Mention a valid user`);
     
     let cantwarnyourself = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
         .setTitle(`Error`)
         .setDescription(`You cant warn yourself`);
     
     let samerankorhigher = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
         .setTitle(`Error`)
         .setDescription(`You can't warn that user due to role hierarchy`);
     
@@ -79,7 +77,7 @@ module.exports = {
     const Server = interaction.guild.name;
     const em = new EmbedBuilder()
       .setTitle(`Case - ${caseID}`)
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
       .addFields(
         { name: "Member", value: `${toWarn.username} (${toWarn.id})` },
         { name: "Moderator", value: `${moderator.user.username} (${moderator.id})` },
@@ -91,7 +89,7 @@ module.exports = {
     
     const emUser = new EmbedBuilder()
       .setTitle("Warned")
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
       .setDescription(`You were warned in **${Server}** for ${finalReason}, please don't do it again!`)
       .addFields({ name: "Case ID", value: `\`${caseID}\`` });
     
@@ -99,7 +97,7 @@ module.exports = {
     
     const emChan = new EmbedBuilder()
       .setDescription(`You have succesfully warned **${toWarn.tag}**.`)
-      .setColor(colorInt);
+      .setColor(0xFAA61A);
     
     await interaction.reply({ embeds: [emChan], flags: MessageFlags.Ephemeral });
     

@@ -4,9 +4,6 @@ require("moment-duration-format");
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { ModRole } = require("../../Config/constants/roles.json");
-const { Color } = require("../../Config/constants/misc.json")
-
-const colorInt = parseInt(Color.replace('#', ''), 16);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -20,7 +17,7 @@ module.exports = {
   category: 'moderation',
   async execute(interaction) {
     let Prohibited = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
         .setTitle(`Prohibited User`)
         .setDescription(`You have to be in the moderation team to look at other people's warnings`);
     
@@ -28,7 +25,7 @@ module.exports = {
     if(!interaction.member.roles.cache.has(ModRole)) return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     
     let enabledms = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0xFAA61A)
         .setTitle(`Error!`)
         .setDescription(`Please enable your dms with this server to that I can send you the information you requested!`);
     
@@ -41,7 +38,7 @@ module.exports = {
     if (user.id == interaction.user.id) {
       const em = new EmbedBuilder()
         .setTitle("Warnings")
-        .setColor(colorInt)
+        .setColor(0xFAA61A)
         .setDescription(`\`${Object.keys(warnsDB.get(user.id).warns).length != 0 ? Object.keys(warnsDB.get(user.id).warns).join('\n') : 'You have not been warned before'}\``);
       
       await interaction.user.send({ embeds: [em] }).catch(err => interaction.reply({ embeds: [enabledms], flags: MessageFlags.Ephemeral }));
@@ -49,7 +46,7 @@ module.exports = {
     } else {
       const em = new EmbedBuilder()
         .setTitle("Warnings")
-        .setColor(colorInt)
+        .setColor(0xFAA61A)
         .setDescription(`\`${Object.keys(warnsDB.get(user.id).warns).length != 0 ? Object.keys(warnsDB.get(user.id).warns).join('\n') : 'User has not been warned before'}\``);
       
       await interaction.user.send({ embeds: [em] }).catch(err => interaction.reply({ embeds: [enabledms], flags: MessageFlags.Ephemeral }));

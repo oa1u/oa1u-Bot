@@ -86,11 +86,11 @@ If everything is configured correctly, your bot should now be online! 🎉
 - [ ] Timeout & Un-timeout commands
 - [ ] Add more fun/entertainment commands
 - [ ] Add code comments for better documentation
-- [ ] Refactor constant naming conventions
+- [ ] Work on the constant naming conventions
 - [ ] Auto Mod
 - [ ] Update the descriptions for the commands
 - [ ] See if i can figure out a way to unban a user using the case ID instead of user ID
-- [ ] Try to compact the config folder
+- [x] ~~Try to compact the config folder~~ ✅
 - [x] ~~Checkban command (by case ID)~~ ✅
 - [x] ~~Add verify command~~ ✅
 - [x] ~~Update embeds~~ ✅

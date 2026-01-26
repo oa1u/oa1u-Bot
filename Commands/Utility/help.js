@@ -1,5 +1,4 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
-const { Color } = require("../../Config/constants/misc.json");
 const { ServerInvite } = require("../../Config/main.json");
 const { AdminRole, ModRole } = require("../../Config/constants/roles.json");
 
@@ -21,7 +20,6 @@ module.exports = {
   category: 'utility',
   async execute(interaction) {
     const category = interaction.options.getString('category');
-    const colorInt = parseInt(Color.replace('#', ''), 16);
     
     // Check user roles
     const member = interaction.member;
@@ -52,7 +50,7 @@ module.exports = {
     categoryList.push('🎫 **Ticket** - Ticket system commands');
 
     let embedhelp = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0x5865F2)
       .setAuthor({ 
         name: `${interaction.client.user.username} Help Menu`, 
         iconURL: interaction.client.user.displayAvatarURL() 
@@ -93,7 +91,7 @@ module.exports = {
     }
 
     const categoryEmbed = new EmbedBuilder()
-      .setColor(colorInt)
+      .setColor(0x5865F2)
       .setAuthor({ 
         name: `${ChangeLatter(category)} Commands`, 
         iconURL: interaction.client.user.displayAvatarURL() 

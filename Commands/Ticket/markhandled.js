@@ -1,11 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const { Color } = require("../../Config/constants/misc.json");
 const { SupportRole } = require("../../Config/constants/roles.json");
 const { ticketCategory } = require("../../Config/constants/channel.json");
-
-// Convert hex color to integer
-const colorInt = parseInt(Color.replace('#', ''), 16);
 
 module.exports = {
   data: new SlashCommandBuilder()

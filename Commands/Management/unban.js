@@ -5,9 +5,6 @@ const { MessageFlags } = require('discord.js');
 require("moment-duration-format");
 const { AdminRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
-const { Color } = require("../../Config/constants/misc.json")
-
-const colorInt = parseInt(Color.replace('#', ''), 16);
 
 module.exports = {
   data: new SlashCommandBuilder()

@@ -5,7 +5,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { ModRole } = require("../../Config/constants/roles.json");
 const { channelLog } = require("../../Config/constants/channel.json")
-const { serverID } = require("../../Config/constants/misc.json")
+const { serverID } = require("../../Config/main.json")
 
 
 module.exports = {

@@ -2,9 +2,6 @@ const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const JSONDatabase = require('../../Functions/Database');
 const { ModRole, AdminRole } = require("../../Config/constants/roles.json");
-const { Color } = require("../../Config/constants/misc.json");
-
-const colorInt = parseInt(Color.replace('#', ''), 16);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,7 +20,7 @@ module.exports = {
     // Permission check
     if (!moderator.roles.cache.has(ModRole) && !moderator.roles.cache.has(AdminRole)) {
       const noPermEmbed = new EmbedBuilder()
-        .setColor(colorInt)
+        .setColor(0x5865F2)
         .setTitle('❌ No Permission')
         .setDescription('You must be a moderator or administrator to use this command!');
       
