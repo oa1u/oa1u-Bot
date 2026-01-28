@@ -194,7 +194,7 @@ Before you begin, ensure you have:
 
 #### 1️⃣ Clone the Repository
 ```bash
-git clone https://github.com/yourusername/oa1u-bot.git
+git clone https://github.com/oa1u/oa1u-bot.git
 cd oa1u-bot
 ```
 
@@ -506,7 +506,7 @@ All contributions are welcome! Here's how:
 
 1. **Fork** the repository
    ```bash
-   git clone https://github.com/yourusername/oa1u-bot.git
+   git clone https://github.com/oa1u/oa1u-bot.git
    cd oa1u-bot
    ```
 
@@ -577,12 +577,12 @@ If you find this bot helpful and useful in your server, please consider:
 - 💡 **Contributing features** to make it even better
 - 📣 **Sharing** with other server admins
 
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/oa1u-bot?style=social&label=Star+Us)](https://github.com/yourusername/oa1u-bot)
+[![GitHub stars](https://img.shields.io/github/stars/oa1u/oa1u-bot?style=social&label=Star+Us)](https://github.com/oa1u/oa1u-bot)
 
 ### Quick Links
-- 🔗 [GitHub Repository](https://github.com/yourusername/oa1u-bot)
+- 🔗 [GitHub Repository](https://github.com/oa1u/oa1u-bot)
 - 📖 [Full Documentation](./README.md)
-- 🐛 [Report Issues](https://github.com/yourusername/oa1u-bot/issues)
+- 🐛 [Report Issues](https://github.com/oa1u/oa1u-bot/issues)
 - 💬 [Discord Community](https://discord.gg/yourlink)
 
 ---
