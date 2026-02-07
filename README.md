@@ -25,10 +25,11 @@
 - MySQL database
 - Discord bot token
 
+
 ### Installation
 ```bash
-git clone <repo-url>
-cd oa1u-Bot
+git clone https://github.com/oa1u/Sentinel
+cd Sentinel
 npm install
 ```
 
