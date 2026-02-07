@@ -1,37 +1,47 @@
 const { EmbedBuilder } = require('discord.js');
-const JSONDatabase = require('../Functions/Database');
+const MySQLDatabaseManager = require('../Functions/MySQLDatabaseManager');
 const { levelUpLogChannelId } = require('../Config/constants/channel.json');
 const { config: CONFIG, multipliers: MULTIPLIERS, levelRoles: LEVEL_ROLES } = require('../Config/constants/leveling.json');
+const misc = require('../Config/constants/misc.json');
 
-const levelDB = new JSONDatabase('levels', { writeInterval: 2000 });
+// This is the XP and leveling system! It tracks user messages, gives out XP, and handles level-up notifications and rewards.
+// TODO: Let admins set custom XP multipliers for each channel.
 
 const cooldowns = new Map();
 let lastCleanup = Date.now();
-const CLEANUP_INTERVAL = 300000;
+const CLEANUP_INTERVAL = (misc.cleanup?.cooldownCleanupInterval || 300000);
+const MAX_COOLDOWN_SIZE = (misc.limits?.maxCooldownEntries || 10000);
 
-function cleanupCooldowns() {
+// Cleans up old cooldown entries so we don't waste memory or slow things down.
+function cleanupCooldowns(force = false) {
     const now = Date.now();
-    const cutoff = now - CONFIG.xpCooldownMs;
     
-    let removed = 0;
-    for (const [key, timestamp] of cooldowns.entries()) {
-        if (timestamp < cutoff) {
-            cooldowns.delete(key);
-            removed++;
+    // If the map gets too big or enough time has passed, clean it up.
+    if (force || cooldowns.size > MAX_COOLDOWN_SIZE || (now - lastCleanup > CLEANUP_INTERVAL)) {
+        const cutoff = now - CONFIG.xpCooldownMs;
+        
+        let removed = 0;
+        for (const [key, timestamp] of cooldowns.entries()) {
+            if (timestamp < cutoff) {
+                cooldowns.delete(key);
+                removed++;
+            }
         }
+        
+        if (removed > 0) {
+            console.log(`[Leveling] Cleaned ${removed} old cooldowns (Map size: ${cooldowns.size}/${MAX_COOLDOWN_SIZE})`);
+        }
+        
+        lastCleanup = now;
     }
-    
-    if (removed > 0) {
-        console.log(`[Leveling] Cleaned ${removed} old cooldowns`);
-    }
-    
-    lastCleanup = now;
 }
 
+// Figures out how much XP is needed to reach the next level.
 function calculateRequiredXP(level) {
     return Math.floor(CONFIG.baseLevelRequirement * Math.pow(CONFIG.levelRequirementMultiplier, level - 1));
 }
 
+// Works out what level a user should be based on their total XP.
 function calculateLevel(xp) {
     let level = 1;
     let totalRequired = 0;
@@ -45,14 +55,52 @@ function calculateLevel(xp) {
     return level - 1;
 }
 
-function getUserData(userId) {
-    return levelDB.ensure(userId, {
-        xp: 0,
-        level: 1,
-        totalXP: 0,
-        messages: 0,
-        lastXPGain: 0,
-    });
+// Gets user's leveling data from the database.
+async function getUserData(userId) {
+    try {
+        const data = await MySQLDatabaseManager.getUserLevel(userId);
+        if (data) {
+            return {
+                xp: data.xp || 0,
+                level: data.level || 1,
+                messages: data.messages || 0,
+                totalXP: data.total_xp || 0,
+                lastXPGain: data.last_message || 0
+            };
+        }
+        // New user, start from scratch
+        return {
+            xp: 0,
+            level: 1,
+            messages: 0,
+            totalXP: 0,
+            lastXPGain: 0
+        };
+    } catch (error) {
+        console.error('[Leveling] Error getting user data:', error);
+        return {
+            xp: 0,
+            level: 1,
+            messages: 0,
+            totalXP: 0,
+            lastXPGain: 0
+        };
+    }
+}
+
+async function saveUserData(userId, data, username) {
+    try {
+        await MySQLDatabaseManager.setUserLevel(userId, {
+            xp: data.xp,
+            level: data.level,
+            messages: data.messages,
+            total_xp: data.totalXP,
+            last_message: data.lastXPGain,
+            username: username
+        });
+    } catch (error) {
+        console.error('[Leveling] Error saving user data:', error);
+    }
 }
 
 function calculateXPGain(message) {
@@ -73,29 +121,30 @@ function calculateXPGain(message) {
     return Math.floor(xp);
 }
 
-// Send level up message
+// Sends level up message
 async function sendLevelUpNotification(message, userData, newLevel) {
     const nextLevelXP = calculateRequiredXP(newLevel + 1);
+    const currentLevelXP = calculateRequiredXP(newLevel);
+    const progressPercentage = Math.round((userData.totalXP / nextLevelXP) * 100);
     
     const levelUpEmbed = new EmbedBuilder()
         .setColor(0xFFD700)
-        .setTitle('🎉 Level Up!')
+        .setTitle('🎉 Congratulations on Your Level Up!')
         .setDescription(
-            `**Congrats ${message.author}!**\n\n` +
-            `You're now **Level ${newLevel}**!\n\n` +
-            `**Stats:**\n` +
-            `> 📊 Total XP: **${userData.totalXP.toLocaleString()} XP**\n` +
-            `> 💬 Messages: **${userData.messages.toLocaleString()}**\n` +
-            `> ⬆️ Next Level: **${nextLevelXP.toLocaleString()} XP**`
-        )
-        .addFields(
-            { name: '📈 Current Level', value: `**${newLevel}**`, inline: true },
-            { name: '🎯 Next Level', value: `**${newLevel + 1}**`, inline: true },
-            { name: '⚡ XP Needed', value: `**${nextLevelXP.toLocaleString()}**`, inline: true }
+            `${message.author} has advanced to a new level in the server.\n\n` +
+            `Your engagement is appreciated and we're excited to see your continued participation!`
         )
         .setThumbnail(message.author.displayAvatarURL({ size: 256 }))
+        .addFields(
+            { name: 'New Level Achieved', value: `**${newLevel}**`, inline: true },
+            { name: 'Next Level Goal', value: `**${newLevel + 1}**`, inline: true },
+            { name: 'Progress', value: `**${progressPercentage}%** toward next level`, inline: true },
+            { name: 'Total XP Earned', value: `**${userData.totalXP.toLocaleString()} XP**\n(From ${userData.messages.toLocaleString()} messages)`, inline: false },
+            { name: 'XP for Next Level', value: `**${nextLevelXP.toLocaleString()} XP** required`, inline: true },
+            { name: 'Level Progression', value: `Level ${newLevel} → Level ${newLevel + 1}`, inline: true }
+        )
         .setTimestamp()
-        .setFooter({ text: `Keep going to reach level ${newLevel + 1}!` });
+        .setFooter({ text: '⭐ Keep up the great work!' });
 
     // Check for role rewards
     const levelRoleKey = `level${newLevel}RoleId`;
@@ -105,8 +154,8 @@ async function sendLevelUpNotification(message, userData, newLevel) {
             try {
                 await message.member.roles.add(role);
                 levelUpEmbed.addFields({
-                    name: '🎁 Reward Unlocked',
-                    value: `You earned the ${role} role!`,
+                    name: '🏆 Role Reward Unlocked',
+                    value: `You have been awarded: ${role.toString()}\n\nThis role grants special perks and recognition in the server.`,
                     inline: false
                 });
             } catch (err) {
@@ -132,15 +181,18 @@ async function sendLevelUpNotification(message, userData, newLevel) {
     if (logChannel) {
         const logEmbed = new EmbedBuilder()
             .setColor(0xFFD700)
-            .setTitle('🎉 Level Up')
-            .setDescription(`**${message.author.tag}** reached level ${newLevel}!`)
+            .setTitle('🎉 Member Level Up Achievement')
+            .setDescription(`${message.author.tag} has reached Level ${newLevel}!`)
             .addFields(
-                { name: '👤 User', value: `${message.author}\n\`${message.author.id}\``, inline: true },
-                { name: '⬆️ Level', value: `**${newLevel}**`, inline: true },
-                { name: '📊 XP', value: `**${userData.totalXP.toLocaleString()}**`, inline: true }
+                { name: 'Member', value: `${message.author.toString()}\n\`ID: ${message.author.id}\``, inline: true },
+                { name: 'Level Reached', value: `**${newLevel}**\n(Next: ${newLevel + 1})`, inline: true },
+                { name: 'Total XP Accumulated', value: `**${userData.totalXP.toLocaleString()} XP**`, inline: false },
+                { name: 'Total Messages', value: `**${userData.messages.toLocaleString()}** messages`, inline: true },
+                { name: 'Achievement Date', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
             )
             .setThumbnail(message.author.displayAvatarURL({ size: 128 }))
-            .setTimestamp();
+            .setTimestamp()
+            .setFooter({ text: 'Leveling System • Member Achievement Log' });
         
         logChannel.send({ embeds: [logEmbed] }).catch((err) => {
             console.error(`[Leveling] Couldn't log: ${err.message}`);
@@ -148,7 +200,7 @@ async function sendLevelUpNotification(message, userData, newLevel) {
     }
 }
 
-// Handle XP gain from messages
+// Handles XP gain from messages
 async function processXP(message) {
     if (message.author.bot) return;
     if (!message.guild) return;
@@ -170,7 +222,7 @@ async function processXP(message) {
     cooldowns.set(cooldownKey, now);
     
     // Get user data
-    const userData = getUserData(message.author.id);
+    const userData = await getUserData(message.author.id);
     const oldLevel = userData.level;
     
     // Calculate and add XP
@@ -190,7 +242,7 @@ async function processXP(message) {
     userData.level = newLevel;
     
     // Save to database
-    levelDB.set(message.author.id, userData);
+    await saveUserData(message.author.id, userData, message.author.username);
     
     // Send level up notification if leveled up
     if (newLevel > oldLevel) {
@@ -198,31 +250,46 @@ async function processXP(message) {
     }
 }
 
-// Get top users
-function getLeaderboard(limit = 10) {
-    const allUsers = levelDB.all();
-    const sorted = Object.entries(allUsers)
-        .map(([id, data]) => ({ id, ...data }))
-        .sort((a, b) => b.totalXP - a.totalXP)
-        .slice(0, limit);
-    
-    return sorted;
+// Gets top users
+async function getLeaderboard(limit = 10) {
+    try {
+        const allUsers = await MySQLDatabaseManager.getAllLevels();
+        const sorted = allUsers
+            .sort((a, b) => (b.total_xp || 0) - (a.total_xp || 0))
+            .slice(0, limit)
+            .map(user => ({
+                id: user.user_id,
+                level: user.level,
+                xp: user.xp,
+                totalXP: user.total_xp,
+                messages: user.messages
+            }));
+        
+        return sorted;
+    } catch (error) {
+        console.error('[Leveling] Error getting leaderboard:', error);
+        return [];
+    }
 }
 
-// Get user's rank
-function getUserRank(userId) {
-    const allUsers = levelDB.all();
-    const sorted = Object.entries(allUsers)
-        .map(([id, data]) => ({ id, ...data }))
-        .sort((a, b) => b.totalXP - a.totalXP);
-    
-    const rank = sorted.findIndex(u => u.id === userId) + 1;
-    return rank || null;
+// Gets user's rank
+async function getUserRank(userId) {
+    try {
+        const allUsers = await MySQLDatabaseManager.getAllLevels();
+        const sorted = allUsers
+            .sort((a, b) => (b.total_xp || 0) - (a.total_xp || 0));
+        
+        const rank = sorted.findIndex(u => u.user_id === userId) + 1;
+        return rank || null;
+    } catch (error) {
+        console.error('[Leveling] Error getting user rank:', error);
+        return null;
+    }
 }
 
 // Admin: set user XP
-function setUserXP(userId, xp) {
-    const userData = getUserData(userId);
+async function setUserXP(userId, xp, username = null) {
+    const userData = await getUserData(userId);
     userData.totalXP = xp;
     userData.xp = 0;
     userData.level = calculateLevel(xp);
@@ -234,20 +301,30 @@ function setUserXP(userId, xp) {
     }
     userData.xp = xp - totalRequired;
     
-    levelDB.set(userId, userData);
+    await saveUserData(userId, userData, username);
     return userData;
 }
 
 // Admin: reset user
-function resetUser(userId) {
-    levelDB.delete(userId);
-    return true;
+async function resetUser(userId) {
+    try {
+        await MySQLDatabaseManager.deleteUserLevel(userId);
+        return true;
+    } catch (error) {
+        console.error('[Leveling] Error resetting user:', error);
+        return false;
+    }
 }
 
 module.exports = {
     name: 'messageCreate',
     async execute(message) {
-        await processXP(message);
+        try {
+            await processXP(message);
+        } catch (error) {
+            console.error('[Leveling] Error processing XP:', error);
+            // Don't throw - just log and continue to prevent bot crashes
+        }
     },
     // Export utility functions for commands
     getUserData,

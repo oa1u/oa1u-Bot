@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log role deletion events
 module.exports = (client) => {
 	client.on("roleDelete", async(role) => {
     const logs = client.channels.cache.get(serverLogChannelId);

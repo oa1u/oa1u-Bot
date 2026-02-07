@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner - Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/version.js"></script>
+    <script src="/public/owner.js" defer></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">🎛️ Owner</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link">Admin</a>
+                <a href="/owner" class="nav-link active">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="userDisplay">Loading...</span>
+                        <span class="role-badge" id="roleDisplay">OWNER</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">OWNER</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Warning Message -->
+        <div class="message warning">
+            ⚠️ <strong>WARNING:</strong> This dashboard contains critical actions that can severely impact the bot and its data. Handle with extreme caution.
+        </div>
+
+        <!-- Error/Success Messages -->
+        <div class="message error hidden" id="errorMsg"></div>
+        <div class="message success hidden" id="successMsg"></div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="ownerTabs" style="margin-bottom:2.5rem;">
+            <button class="tab active" data-tab="system" style="--tab-color:#5b7fff;"><span class="tab-icon">🔧</span> <span>System Status</span></button>
+            <button class="tab" data-tab="users" style="--tab-color:#5bffb8;"><span class="tab-icon">👥</span> <span>Account Management</span></button>
+            <button class="tab" data-tab="invites" style="--tab-color:#ffd45b;"><span class="tab-icon">🎟️</span> <span>Invite Management</span></button>
+            <button class="tab" data-tab="security" style="--tab-color:#f44336;"><span class="tab-icon">🔐</span> <span>Security Settings</span></button>
+        </div>
+        <style>
+        .tabs {
+            display: flex;
+            gap: 2.5rem;
+            border-bottom: 2px solid var(--border-color);
+            margin: 2.5rem 0 2rem 0;
+            padding-left: 0.5rem;
+            align-items: center;
+        }
+        .tab {
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem 0.5rem 1.5rem;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+        }
+        .tab.active {
+            color: var(--tab-color, #5b7fff);
+            background: var(--bg-card);
+            box-shadow: 0 2px 8px rgba(91,127,255,0.08);
+            border-bottom: 2px solid var(--tab-color, #5b7fff);
+            z-index: 2;
+        }
+        .tab:not(.active):hover {
+            color: var(--tab-color, #5b7fff);
+            background: var(--bg-card-hover);
+        }
+        .tab .tab-icon {
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        </style>
+        <script>
+        // Enhanced tab system for owner panel
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('#ownerTabs .tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const tabName = tab.getAttribute('data-tab');
+                    tabContents.forEach(tc => {
+                        if (tc.id === tabName) {
+                            tc.classList.add('active');
+                            tc.style.display = '';
+                        } else {
+                            tc.classList.remove('active');
+                            tc.style.display = 'none';
+                        }
+                    });
+                });
+            });
+            // Hide all but the first tab content on load
+            tabContents.forEach((tc, idx) => {
+                if (idx !== 0) tc.style.display = 'none';
+            });
+        });
+        </script>
+
+        <!-- System Status Tab -->
+        <div id="system" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">⚙️</span>
+                    Bot System Status
+                </div>
+                <div class="stats-grid" id="systemStats">
+                    <div class="loading show">Loading system stats...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📊</span>
+                    Database Health
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Status</th>
+                                <th>Last Check</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>MySQL Connection</td>
+                                <td id="mysqlStatus"><span style="color: var(--color-yellow);">Checking...</span></td>
+                                <td id="mysqlTime">-</td>
+                            </tr>
+                            <tr>
+                                <td>Levels Table</td>
+                                <td id="levelsStatus"><span style="color: var(--color-yellow);">Checking...</span></td>
+                                <td id="levelsTime">-</td>
+                            </tr>
+                            <tr>
+                                <td>Warns Table</td>
+                                <td id="warnsStatus"><span style="color: var(--color-yellow);">Checking...</span></td>
+                                <td id="warnsTime">-</td>
+                            </tr>
+                            <tr>
+                                <td>Sessions Table</td>
+                                <td id="sessionsStatus"><span style="color: var(--color-yellow);">Checking...</span></td>
+                                <td id="sessionsTime">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🖥️</span>
+                    Live Terminal (Last 50 Logs)
+                </div>
+                <div id="terminalContainer" style="background: #0a0a0a; border-radius: 0.5rem; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.85rem; color: #00ff00; height: 400px; overflow-y: auto; border: 1px solid #333;">
+                    <div id="terminalOutput" style="white-space: pre-wrap; word-break: break-word;"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📊</span>
+                    Command Activity (Last 24 Hours)
+                </div>
+                <div style="padding: 1.5rem;">
+                    <canvas id="commandActivityChart" style="max-height: 300px;"></canvas>
+                </div>
+                <div style="padding: 0 1.5rem 1.5rem 1.5rem;">
+                    <div class="card-header" style="font-size: 0.9rem; margin-bottom: 0.75rem;">
+                        <span class="card-header-icon">🏆</span>
+                        Top Commands This Week
+                    </div>
+                    <div id="topCommandsList" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health Tab -->
+        <div id="health" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">❤️</span>
+                    <span>System Health Metrics</span>
+                </div>
+                <div class="stats-grid" id="healthMetrics">
+                    <div class="stat-card">
+                        <div class="stat-icon green">💚</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="cpuUsage">-</div>
+                            <div class="stat-label">CPU Usage</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue">💾</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="memoryUsage">-</div>
+                            <div class="stat-label">Memory Usage</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">⚡</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="apiLatency">-</div>
+                            <div class="stat-label">API Latency</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">🗄️</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="dbPing">-</div>
+                            <div class="stat-label">Database Ping</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🗄️</span>
+                    <span>Database Health</span>
+                </div>
+                <div class="table-container" id="dbHealthContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Service</th>
+                                <th>Last Check</th>
+                                <th>Response Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dbHealthTable">
+                            <tr><td colspan="4" class="text-center text-muted">Loading health data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📈</span>
+                    <span>Resource Usage (Last 24 Hours)</span>
+                </div>
+                <div class="table-container" id="resourceUsageContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Memory (MB)</th>
+                                <th>CPU (%)</th>
+                                <th>Database Queries</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resourceUsageTable">
+                            <tr><td colspan="4" class="text-center text-muted">Loading resource data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Tab -->
+        <!-- Metrics Tab -->
+        <!-- Account Management Tab -->
+        <div id="users" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">👥</span>
+                    Admin User Management
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="loadAdminUsers()">🔄 Refresh</button>
+                </div>
+
+                <div class="table-container" id="adminUsersContainer">
+                    <div class="loading show">Loading admin users...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invite Management Tab -->
+        <div id="invites" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🎫</span>
+                    <span>Generate Invite Code</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role for Invite</label>
+                    <select id="inviteRole" class="form-input">
+                        <option value="moderator">Moderator</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Expires In (Days)</label>
+                    <input type="number" id="inviteExpiry" class="form-input" value="7" min="1" max="365">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (Optional)</label>
+                    <input type="text" id="inviteDescription" class="form-input" placeholder="e.g., For new staff member">
+                </div>
+                <button class="btn btn-primary" onclick="generateInvite()">🎟️ Generate Invite Code</button>
+                <div id="inviteResult"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📊</span>
+                    <span>Invite Statistics</span>
+                </div>
+                <div class="message info" style="margin-bottom: 1rem;">
+                    <strong>📈 Total Active Invites:</strong> <span id="totalActiveInvites">-</span> | 
+                    <strong>✅ Used Invites:</strong> <span id="totalUsedInvites">-</span> | 
+                    <strong>⏰ Expired Invites:</strong> <span id="totalExpiredInvites">-</span>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="inviteSearch" class="form-input" placeholder="Search by code or username..." onkeyup="filterInviteStats()">
+                </div>
+                <div class="table-container" id="inviteStatsContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Created By</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Used By</th>
+                                <th>Created</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inviteStatsTable">
+                            <tr><td colspan="8" class="text-center text-muted">Loading invite stats...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings Tab -->
+        <div id="security" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🔐</span>
+                    Security Overview
+                </div>
+                <div class="message warning" style="margin-bottom: 1rem;">
+                    <strong>Session Security:</strong> All sessions are encrypted and stored in MySQL. Sessions expire after 24 hours of inactivity.
+                </div>
+                <div class="message warning" style="margin-bottom: 1rem;">
+                    <strong>Password Security:</strong> All passwords are hashed with bcrypt (10 rounds). Strong password requirements enforced.
+                </div>
+                <div class="message warning">
+                    <strong>Rate Limiting:</strong> Login endpoints limited to 3 attempts per minute. IP lockout after 5 failed attempts in 30 minutes.
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🚨</span>
+                    Active Sessions
+                </div>
+                <div class="table-container" id="sessionsContainer">
+                    <div class="loading show">Loading sessions...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/public/security.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkOwnerAccess();
+            await loadSystemStats();
+            await checkDatabaseHealth();
+            await loadHealthMetrics();
+            await loadDatabaseHealthDetails();
+            await loadResourceUsage();
+            await loadSessions();
+            await loadAdminUsers();
+            await loadInviteStats();
+            await loadUserInfo();
+        });
+
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/account/info');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('userDisplay').textContent = data.username;
+                    document.getElementById('roleDisplay').textContent = data.role.toUpperCase();
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function toggleUserDropdown() {
+            const menu = document.getElementById('userDropdownMenu');
+            const trigger = document.querySelector('.user-dropdown-trigger');
+            menu.classList.toggle('show');
+            trigger.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.user-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                document.getElementById('userDropdownMenu')?.classList.remove('show');
+                document.querySelector('.user-dropdown-trigger')?.classList.remove('active');
+            }
+        });
+
+        async function checkOwnerAccess() {
+            try {
+                const response = await fetch('/api/account/info');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.role !== 'owner') {
+                        showError('Owner access required');
+                        setTimeout(() => {
+                            window.location.href = '/dashboard';
+                        }, 2000);
+                    }
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                window.location.href = '/login';
+            }
+        }
+
+        function switchTab(e, tabName) {
+            e.preventDefault();
+            
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            e.target.classList.add('active');
+        }
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
+
+        async function loadSystemStats() {
+            try {
+                const response = await fetch('/api/admin/bot-stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    const statusColor = data.isOnline ? 'var(--color-green)' : 'var(--color-red)';
+                    const statusIcon = data.isOnline ? '🟢' : '🔴';
+                    
+                    document.getElementById('systemStats').innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-icon ${data.isOnline ? 'green' : 'red'}">${statusIcon}</div>
+                            <div class="stat-content">
+                                <div class="stat-value" style="color: ${statusColor};">${data.isOnline ? 'Online' : 'Offline'}</div>
+                                <div class="stat-label">Bot Status</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon blue">⏱️</div>
+                            <div class="stat-content">
+                                <div class="stat-value">${data.uptime}</div>
+                                <div class="stat-label">Uptime</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon purple">⚡</div>
+                            <div class="stat-content">
+                                <div class="stat-value">${data.commandsLoaded}</div>
+                                <div class="stat-label">Commands Loaded</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon orange">📡</div>
+                            <div class="stat-content">
+                                <div class="stat-value">${data.eventsLoaded}</div>
+                                <div class="stat-label">Events Loaded</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading system stats:', error);
+            }
+        }
+
+        async function checkDatabaseHealth() {
+            try {
+                const response = await fetch('/api/server/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    const now = new Date().toLocaleTimeString();
+                    
+                    const mysqlStatus = document.getElementById('mysqlStatus');
+                    if (mysqlStatus) mysqlStatus.innerHTML = '<span style="color: var(--color-green);">✓ Connected</span>';
+                    const mysqlTime = document.getElementById('mysqlTime');
+                    if (mysqlTime) mysqlTime.textContent = now;
+                    
+                    const levelsStatus = document.getElementById('levelsStatus');
+                    if (levelsStatus) levelsStatus.innerHTML = '<span style="color: var(--color-green);">✓ OK</span>';
+                    const levelsTime = document.getElementById('levelsTime');
+                    if (levelsTime) levelsTime.textContent = now;
+                    
+                    const warnsStatus = document.getElementById('warnsStatus');
+                    if (warnsStatus) warnsStatus.innerHTML = '<span style="color: var(--color-green);">✓ OK</span>';
+                    const warnsTime = document.getElementById('warnsTime');
+                    if (warnsTime) warnsTime.textContent = now;
+                    
+                    const sessionsStatus = document.getElementById('sessionsStatus');
+                    if (sessionsStatus) sessionsStatus.innerHTML = '<span style="color: var(--color-green);">✓ OK</span>';
+                    const sessionsTime = document.getElementById('sessionsTime');
+                    if (sessionsTime) sessionsTime.textContent = now;
+                    
+                    const memUsage = document.getElementById('advMemUsage');
+                    if (memUsage) memUsage.textContent = data.memoryUsage + 'MB';
+                    
+                    const totalUsers = document.getElementById('advTotalUsers');
+                    if (totalUsers) totalUsers.textContent = data.totalMembers;
+                    
+                    const totalRecords = document.getElementById('advTotalRecords');
+                    if (totalRecords) totalRecords.textContent = (data.totalWarns + data.activeReminders + data.activeGiveaways).toLocaleString();
+                    
+                    const adminCount = document.getElementById('advAdminCount');
+                    if (adminCount) adminCount.textContent = '?';
+                }
+            } catch (error) {
+                console.error('Error checking database health:', error);
+            }
+        }
+
+        async function loadHealthMetrics() {
+            try {
+                const response = await fetch('/api/system/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('cpuUsage').textContent = data.cpuUsage || '-';
+                    document.getElementById('memoryUsage').textContent = data.memoryUsage || '-';
+                    document.getElementById('apiLatency').textContent = data.apiLatency || '-';
+                    document.getElementById('dbPing').textContent = data.dbPing || '-';
+                } else {
+                    console.error('Health metrics API error:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading health metrics:', error);
+            }
+        }
+
+        async function loadDatabaseHealthDetails() {
+            try {
+                const response = await fetch('/api/system/db-health');
+                if (response.ok) {
+                    const services = await response.json();
+                    let html = '<table><thead><tr><th>Status</th><th>Service</th><th>Last Check</th><th>Response Time</th></tr></thead><tbody>';
+                    
+                    if (Array.isArray(services) && services.length > 0) {
+                        services.forEach(service => {
+                            const statusColor = service.statusColor === 'green' ? 'var(--color-green)' : 'var(--color-red)';
+                            html += `<tr>
+                                <td><span style="color: ${statusColor};">${service.status}</span></td>
+                                <td>${service.service}</td>
+                                <td>${service.lastCheck}</td>
+                                <td>${service.responseTime}</td>
+                            </tr>`;
+                        });
+                    } else {
+                        html += '<tr><td colspan="4" class="text-center text-muted">No health data available</td></tr>';
+                    }
+                    
+                    html += '</tbody></table>';
+                    document.getElementById('dbHealthTable').parentElement.innerHTML = html;
+                } else {
+                    console.error('Database health API error:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading database health:', error);
+            }
+        }
+
+        async function loadResourceUsage() {
+            try {
+                const response = await fetch('/api/system/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    const now = new Date().toLocaleTimeString();
+                    const html = `<table><thead><tr><th>Time</th><th>Memory (MB)</th><th>CPU (%)</th><th>Database Queries</th></tr></thead><tbody>
+                        <tr>
+                            <td>${now}</td>
+                            <td>${data.heapUsedMB}/${data.heapTotalMB}</td>
+                            <td>${data.cpuUsage}</td>
+                            <td>-</td>
+                        </tr>
+                    </tbody></table>`;
+                    document.getElementById('resourceUsageTable').parentElement.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading resource usage:', error);
+            }
+        }
+
+        async function loadSessions() {
+            try {
+                const response = await fetch('/api/system/sessions');
+                if (response.ok) {
+                    const sessions = await response.json();
+                    
+                    if (sessions.length === 0) {
+                        document.getElementById('sessionsContainer').innerHTML = '<p class="text-center text-muted">No active sessions</p>';
+                        return;
+                    }
+                    
+                    let html = '<table><thead><tr><th>Username</th><th>IPv4</th><th>IPv6</th><th>Device</th><th>User Agent</th><th>Created</th><th>Expires</th><th>Status</th></tr></thead><tbody>';
+                    
+                    sessions.forEach(session => {
+                        const statusColor = session.isActive ? 'var(--color-green)' : 'var(--color-red)';
+                        const statusText = session.isActive ? '✓ Active' : '✗ Expired';
+                        const ipv4 = session.ipAddressV4 || '-';
+                        const ipv6 = session.ipAddressV6 || '-';
+                        const userAgent = session.userAgent || '-';
+                        html += `<tr>
+                            <td>${session.username}</td>
+                            <td>${ipv4}</td>
+                            <td>${ipv6}</td>
+                            <td>${session.device}</td>
+                            <td style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${userAgent}</td>
+                            <td>${session.createdAt}</td>
+                            <td>${session.expiresAt}</td>
+                            <td><span style="color: ${statusColor};">${statusText}</span></td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table>';
+                    document.getElementById('sessionsContainer').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                document.getElementById('sessionsContainer').innerHTML = '<p class="text-center text-muted">Failed to load sessions</p>';
+            }
+        }
+
+        async function loadAdminUsers() {
+            try {
+                const response = await fetch('/api/admin/users');
+                if (response.ok) {
+                    const users = await response.json();
+                    let html = '<table><thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Last Login</th><th>Actions</th></tr></thead><tbody>';
+                    
+                    users.forEach(user => {
+                        const created = new Date(user.created_at).toLocaleDateString();
+                        const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never';
+                        const roleColor = user.role === 'owner' ? 'var(--color-red)' : user.role === 'admin' ? 'var(--color-blue)' : 'var(--color-green)';
+                        html += `<tr>
+                            <td>${user.username}</td>
+                            <td><strong style="color: ${roleColor};">${user.role.toUpperCase()}</strong></td>
+                            <td>${created}</td>
+                            <td>${lastLogin}</td>
+                            <td><button class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="deleteAdminUser('${user.id}', '${user.username}')">Delete</button></td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table>';
+                    document.getElementById('adminUsersContainer').innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading admin users:', error);
+                showError('Failed to load admin users');
+            }
+        }
+
+        async function loadInviteStats() {
+            try {
+                const response = await fetch('/api/invites/stats');
+                if (!response.ok) return;
+
+                const stats = await response.json();
+                const table = document.getElementById('inviteStatsTable');
+                if (!table) return;
+
+                if (!Array.isArray(stats) || stats.length === 0) {
+                    table.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No invite stats available</td></tr>';
+                    // Reset stats counters
+                    document.getElementById('totalActiveInvites').textContent = '0';
+                    document.getElementById('totalUsedInvites').textContent = '0';
+                    document.getElementById('totalExpiredInvites').textContent = '0';
+                    return;
+                }
+
+                // Calculate statistics
+                const now = new Date();
+                let active = 0, used = 0, expired = 0;
+                
+                stats.forEach(stat => {
+                    const expiresAt = new Date(stat.expires_at);
+                    if (expiresAt < now) {
+                        expired++;
+                    } else {
+                        active++;
+                    }
+                    if (stat.used_by) {
+                        used++;
+                    }
+                });
+
+                // Update stat displays
+                document.getElementById('totalActiveInvites').textContent = active;
+                document.getElementById('totalUsedInvites').textContent = used;
+                document.getElementById('totalExpiredInvites').textContent = expired;
+
+                table.innerHTML = stats.map(stat => {
+                    const created = stat.created_at ? new Date(stat.created_at).toLocaleDateString() : 'N/A';
+                    const expires = stat.expires_at ? new Date(stat.expires_at).toLocaleDateString() : 'N/A';
+                    const status = new Date(stat.expires_at) < now ? '❌ Expired' : (stat.used_by ? '✅ Used' : '⏳ Active');
+                    const isUsed = stat.used_by ? true : false;
+                    const revokeButton = isUsed 
+                        ? '<button class="btn btn-sm" style="background: #ccc; color: #666; cursor: not-allowed;" disabled title="Cannot revoke a used invite">Revoke</button>'
+                        : `<button class="btn btn-sm btn-danger" onclick="revokeInvite('${stat.code}')">Revoke</button>`;
+                    return `
+                        <tr>
+                            <td><code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px;">${escapeHtml(stat.code || '')}</code></td>
+                            <td>${escapeHtml(stat.created_by || 'System')}</td>
+                            <td><strong>${escapeHtml(stat.role || 'moderator')}</strong></td>
+                            <td>${status}</td>
+                            <td>${stat.used_by ? escapeHtml(stat.used_by) : '<span class="text-muted">Not used</span>'}</td>
+                            <td>${created}</td>
+                            <td>${expires}</td>
+                            <td>${revokeButton}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error loading invite stats:', error);
+            }
+        }
+
+        async function generateInvite() {
+            const role = document.getElementById('inviteRole').value;
+            const expiresInDays = parseInt(document.getElementById('inviteExpiry').value) || 7;
+            
+            try {
+                const response = await fetch('/api/invites/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role, expiresInDays })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('inviteResult').innerHTML = `
+                        <div class="message success" style="margin-top: 1.5rem;">
+                            <div>
+                                <strong>✅ Invite Code Generated!</strong><br>
+                                Code: <code style="background: var(--bg-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 1.1rem;">${data.code}</code><br>
+                                Role: <strong>${data.role}</strong><br>
+                                Expires: ${new Date(data.expiresAt).toLocaleDateString()}
+                            </div>
+                        </div>
+                    `;
+                    await loadInviteStats();
+                } else {
+                    showError('Failed to generate invite code');
+                }
+            } catch (error) {
+                console.error('Error generating invite:', error);
+                showError('Error generating invite code');
+            }
+        }
+
+        async function deleteAdminUser(userId, username) {
+            if (!confirm(`Are you sure you want to delete admin account "${username}"?`)) return;
+            
+            try {
+                const response = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showSuccess('Admin user deleted');
+                    await loadAdminUsers();
+                } else {
+                    showError('Failed to delete admin user');
+                }
+            } catch (error) {
+                showError('Error deleting admin user');
+            }
+        }
+
+        async function forceLogoutAll() {
+            if (!confirm('⚠️ This will logout ALL users. Continue?')) return;
+            
+            try {
+                const response = await fetch('/api/owner/force-logout-all', { method: 'POST' });
+                if (response.ok) {
+                    showSuccess('All users have been logged out');
+                } else {
+                    showError('Failed to logout all users');
+                }
+            } catch (error) {
+                showError('Error forcing logout');
+            }
+        }
+
+        async function backupDatabase() {
+            try {
+                const response = await fetch('/api/admin/export-database');
+                if (response.ok) {
+                    const data = await response.json();
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `bot-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    a.click();
+                    showSuccess('Database backup created and downloaded');
+                } else {
+                    showError('Failed to create backup');
+                }
+            } catch (error) {
+                showError('Error creating backup');
+            }
+        }
+
+        async function purgeBans() {
+            if (!confirm('⚠️⚠️ Are you ABSOLUTELY sure? This will DELETE ALL BAN RECORDS. This cannot be undone!')) return;
+            if (!confirm('Final confirmation: Delete all bans?')) return;
+            
+            try {
+                const response = await fetch('/api/owner/purge-bans', { method: 'POST' });
+                if (response.ok) {
+                    showSuccess('All ban records have been purged');
+                } else {
+                    showError('Failed to purge bans');
+                }
+            } catch (error) {
+                showError('Error purging bans');
+            }
+        }
+
+        async function purgeWarnings() {
+            if (!confirm('⚠️⚠️ Are you ABSOLUTELY sure? This will DELETE ALL WARNING RECORDS. This cannot be undone!')) return;
+            if (!confirm('Final confirmation: Delete all warnings?')) return;
+            
+            try {
+                const response = await fetch('/api/owner/purge-warnings', { method: 'POST' });
+                if (response.ok) {
+                    showSuccess('All warning records have been purged');
+                } else {
+                    showError('Failed to purge warnings');
+                }
+            } catch (error) {
+                showError('Error purging warnings');
+            }
+        }
+
+        async function resetAllLevels() {
+            if (!confirm('⚠️⚠️ Are you ABSOLUTELY sure? All users will be reset to level 1! This cannot be undone!')) return;
+            if (!confirm('Final confirmation: Reset all user levels?')) return;
+            
+            try {
+                const response = await fetch('/api/admin/reset-levels', { method: 'POST' });
+                if (response.ok) {
+                    showSuccess('All user levels have been reset');
+                } else {
+                    showError('Failed to reset levels');
+                }
+            } catch (error) {
+                showError('Error resetting levels');
+            }
+        }
+
+        async function wipeAllData() {
+            const confirmText = prompt('⚠️ TYPE "DELETE ALL" to confirm wiping ALL user data. This action is IRREVERSIBLE!');
+            if (confirmText !== 'DELETE ALL') {
+                showError('Confirmation failed. Data not wiped.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/owner/wipe-all-data', { method: 'POST' });
+                if (response.ok) {
+                    showSuccess('All user data has been wiped. The database is now clean.');
+                } else {
+                    showError('Failed to wipe data');
+                }
+            } catch (error) {
+                showError('Error wiping data');
+            }
+        }
+
+
+        function showError(msg) {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.textContent = '❌ ' + msg;
+            errorEl.classList.remove('hidden');
+            setTimeout(() => { errorEl.classList.add('hidden'); }, 5000);
+        }
+
+        function showSuccess(msg) {
+            const successEl = document.getElementById('successMsg');
+            successEl.textContent = '✅ ' + msg;
+            successEl.classList.remove('hidden');
+            setTimeout(() => { successEl.classList.add('hidden'); }, 5000);
+        }
+
+        function logout() {
+            if (confirm('Logout?')) {
+                fetch('/api/logout', { method: 'POST' }).then(() => {
+                    window.location.href = '/login';
+                });
+            }
+        }
+
+        // Live terminal log streaming
+        const terminalOutput = document.getElementById('terminalOutput');
+        const terminalContainer = document.getElementById('terminalContainer');
+        let logCount = 0;
+        const maxLogs = 50;
+        
+        // Define logging functions
+        const originalLog = console.log.bind(console);
+        const originalError = console.error.bind(console);
+
+        if (window.io && terminalOutput && terminalContainer) {
+            const socket = io();
+            
+            socket.on('connect', () => {
+                // Connected to live log stream
+            });
+            
+            socket.on('log', (logData) => {
+                try {
+                    const { level, message, timestamp } = logData;
+                    const time = new Date(timestamp).toLocaleTimeString();
+                    
+                    // Color based on level
+                    let color = '#00ff00'; // green for log
+                    if (level === 'error') color = '#ff4444'; // red for error
+                    else if (level === 'warn') color = '#ffaa00'; // orange for warn
+                    else if (level === 'info') color = '#00aaff'; // cyan for info
+                    
+                    const logLine = `<span style="color: #888;">[${time}]</span> <span style="color: ${color};">${escapeHtml(message)}</span>\n`;
+                    terminalOutput.innerHTML += logLine;
+                    
+                    // Keep only last 50 logs
+                    logCount++;
+                    if (logCount > maxLogs) {
+                        const lines = terminalOutput.innerHTML.split('\n');
+                        if (lines.length > maxLogs + 1) {
+                            terminalOutput.innerHTML = lines.slice(1).join('\n');
+                        }
+                    }
+                    
+                    // Auto-scroll to bottom
+                    if (terminalContainer) {
+                        terminalContainer.scrollTop = terminalContainer.scrollHeight;
+                    }
+                } catch (e) {
+                    originalError('Error processing log:', e);
+                }
+            });
+            
+            socket.on('error', (error) => {
+                originalError('Socket error:', error);
+            });
+        } else {
+            if (!window.io) {
+                originalWarn('Socket.IO library not loaded');
+            }
+        }
+
+        // Load command activity chart
+        let commandActivityChart = null;
+        async function loadCommandActivityChart() {
+            try {
+                const response = await fetch('/api/stats/command-activity');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    const ctx = document.getElementById('commandActivityChart');
+                    if (!ctx) return;
+                    
+                    // Destroy existing chart if it exists
+                    if (commandActivityChart) {
+                        commandActivityChart.destroy();
+                    }
+                    
+                    // Ensure data has required fields
+                    const chartData = {
+                        days: data.days || [],
+                        commandCounts: data.commandCounts || [],
+                        successCounts: data.successCounts || [],
+                        errorCounts: data.errorCounts || [],
+                        topCommands: data.topCommands || []
+                    };
+                    
+                    commandActivityChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: chartData.days,
+                            datasets: [
+                                {
+                                    label: 'Total Commands',
+                                    data: chartData.commandCounts,
+                                    borderColor: '#5b7fff',
+                                    backgroundColor: 'rgba(91, 127, 255, 0.1)',
+                                    tension: 0.3,
+                                    fill: true,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    borderWidth: 2
+                                },
+                                {
+                                    label: 'Successful',
+                                    data: chartData.successCounts,
+                                    borderColor: '#5bffb8',
+                                    backgroundColor: 'rgba(91, 255, 184, 0.1)',
+                                    tension: 0.3,
+                                    fill: true,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    borderWidth: 2
+                                },
+                                {
+                                    label: 'Errors/Failed',
+                                    data: chartData.errorCounts,
+                                    borderColor: '#ff5b5b',
+                                    backgroundColor: 'rgba(255, 91, 91, 0.1)',
+                                    tension: 0.3,
+                                    fill: true,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    borderWidth: 2
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        color: '#e5e7eb',
+                                        font: { size: 12 },
+                                        padding: 15
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                                    titleColor: '#e5e7eb',
+                                    bodyColor: '#e5e7eb',
+                                    borderColor: '#374151',
+                                    borderWidth: 1,
+                                    padding: 10,
+                                    displayColors: true
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        color: '#9ca3af',
+                                        precision: 0,
+                                        stepSize: 1
+                                    },
+                                    grid: {
+                                        color: 'rgba(75, 85, 99, 0.2)'
+                                    }
+                                },
+                                x: {
+                                    ticks: {
+                                        color: '#9ca3af'
+                                    },
+                                    grid: {
+                                        color: 'rgba(75, 85, 99, 0.2)'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Render top commands list
+                    const topCommandsList = document.getElementById('topCommandsList');
+                    if (topCommandsList) {
+                        if (chartData.topCommands && chartData.topCommands.length > 0) {
+                            topCommandsList.innerHTML = chartData.topCommands.map((cmd, idx) => `
+                                <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: rgba(59, 130, 246, 0.1); border-radius: 0.375rem;">
+                                    <span style="font-weight: 700; font-size: 1.1rem; color: var(--accent-primary); min-width: 1.5rem;">${idx + 1}</span>
+                                    <span style="flex: 1; font-family: monospace; color: var(--text-primary);">/${cmd.name}</span>
+                                    <span style="font-weight: 600; color: var(--text-secondary);">${(cmd.count || 0).toLocaleString()} uses</span>
+                                </div>
+                            `).join('');
+                        } else {
+                            topCommandsList.innerHTML = '<div style="padding: 0.5rem; color: var(--text-secondary);">No command data available yet</div>';
+                        }
+                    }
+                } else {
+                    console.error('Failed to fetch command activity:', response.status);
+                }
+            } catch (error) {
+                console.error('Error loading command activity chart:', error);
+            }
+        }
+
+        // Load chart on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadCommandActivityChart);
+        } else {
+            loadCommandActivityChart();
+        }
+    </script>
+
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+
+    <script src="/public/version.js"></script>
+</body>
+</html>

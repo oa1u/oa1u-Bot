@@ -5,7 +5,10 @@ const { verifiedRoleId, administratorRoleId } = require("../Config/constants/rol
 const { welcomeChannelId, verificationChannelId, captchaLogChannelId } = require("../Config/constants/channel.json");
 const { Version } = require("../Config/main.json");
 
-const Color = "#32CD32"; // Default verification accent color
+// Handles captcha verification for new members. Sends a DM with a captcha image, checks their response, and gives them the verified role.
+// TODO: Make difficulty levels configurable for more flexibility.
+
+const Color = "#32CD32"; // This is the accent color for verification stuff.
 
 module.exports = {
     name: "guildMemberAdd",
@@ -17,7 +20,7 @@ module.exports = {
         const verifyChannel = client.channels.cache.get(verificationChannelId);
         const welcomeChannelObj = client.channels.cache.get(welcomeChannelId);
 
-        // Auto-verify bots
+        // Instantly verify bots by giving them the verified role.
         if (member.user?.bot) {
             const roleObj = member.guild.roles.cache.get(verifiedRoleId);
             if (roleObj) {
@@ -28,7 +31,7 @@ module.exports = {
             return;
         }
 
-        // Human verification
+        // Human verification: generate a captcha and send it to the user.
         const captcha = new CaptchaGenerator()
             .setDimension(600, 600)
             .setCaptcha({ 
@@ -42,7 +45,6 @@ module.exports = {
         const captchaBuffer = await captcha.generate();
         const captchaCode = captcha.text;
         
-        console.log(`Generated captcha for ${member.user.tag}: ${captchaCode}`);
 
         if (!captchachannel) {
             const systemErrorEmbed = new EmbedBuilder()
@@ -114,7 +116,6 @@ module.exports = {
                 embeds: [e1]
             }).catch(async () => {
                 // DM failed - user already pinged in verification channel above
-                console.log(`Could not DM ${member.user.tag} - they need to use /verify command`);
             });
 
             const filter = m => {
@@ -122,7 +123,6 @@ module.exports = {
                 if (m.author.id === member.id) {
                     const userInput = String(m.content).toUpperCase().trim();
                     const correctCode = String(captchaCode).toUpperCase().trim();
-                    console.log(`User ${member.user.tag} entered: "${userInput}", Expected: "${correctCode}"`);
                     if (userInput === correctCode) {
                         return true;
                     } else {
@@ -139,13 +139,10 @@ module.exports = {
                 time: 600000,
             }).then(async response => {
                 try {
-                    console.log(`Response received for ${member.user.tag}, size: ${response.size}`);
                     if (response && response.size > 0) {
                         const roleObj = member.guild.roles.cache.get(verifiedRoleId);
-                        console.log(`Role found: ${roleObj ? roleObj.name : 'NULL'}`);
                         if (roleObj) {
                             await member.roles.add(roleObj);
-                            console.log(`Role added to ${member.user.tag}`);
                             
                             // Send success message with actual role name
                             const successEmbed = new EmbedBuilder()

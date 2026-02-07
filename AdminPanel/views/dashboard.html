@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Bot Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/public/dashboard.js?v=5" defer></script>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">🎛️ Dashboard</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link active">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link" id="adminLink">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="headerUsername">Loading...</span>
+                        <span class="role-badge" id="headerRole">user</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">user</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1 style="margin-bottom: 2rem; font-size: 2rem; color: var(--text-primary);">📊 Server Overview</h1>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">👥</div>
+                <div class="stat-value" id="statTotalUsers">-</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">⚠️</div>
+                <div class="stat-value" id="statTotalWarns">-</div>
+                <div class="stat-label">Total Warns</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">⏰</div>
+                <div class="stat-value" id="statActiveReminders">-</div>
+                <div class="stat-label">Active Reminders</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon yellow">🎁</div>
+                <div class="stat-value" id="statTotalGiveaways">-</div>
+                <div class="stat-label">Giveaways</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">🚫</div>
+                <div class="stat-value" id="statTotalBanned">-</div>
+                <div class="stat-label">Currently Banned</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon purple">🎫</div>
+                <div class="stat-value" id="statActiveTickets">-</div>
+                <div class="stat-label">Active Tickets</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon red">⚠️</div>
+                <div class="stat-value" id="warnsToday">0</div>
+                <div class="stat-label">Warnings Today</div>
+            </div>
+
+
+            <div class="stat-card">
+                <div class="stat-icon blue">⚡</div>
+                <div class="stat-value" id="commandsToday">0</div>
+                <div class="stat-label">Commands Used Today</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 2rem;">
+            <div class="card-header">Summary Statistics</div>
+            <div class="summary-section">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Average Level</div>
+                        <div class="summary-value" id="avgLevel">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total XP</div>
+                        <div class="summary-value" id="totalXP">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Average Warns per User</div>
+                        <div class="summary-value" id="avgWarns">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Ban Rate</div>
+                        <div class="summary-value" id="banRate">-</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Active Reminders</div>
+                        <div class="summary-value" id="summaryActiveReminders">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="punishmentHistoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Punishment History - <span id="historyUsername">User</span></h3>
+                <button class="modal-close" onclick="closePunishmentHistory()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="punishmentTimeline" class="timeline">
+                    <div class="text-center text-muted">Loading history...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePunishmentHistory()">Close</button>
+            </div>
+        </div>
+    </div>
+
+            <footer class="page-footer">
+                <div class="footer-links">
+                    <span>© 2026 <strong>Admin Panel</strong></span>
+                    <span class="footer-sep">•</span>
+                    <a href="/changelog">Changelog</a>
+                    <span class="footer-sep">•</span>
+                    <a href="/license">License</a>
+                </div>
+            </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/version.js"></script>
+    <script src="/public/notifications.js" defer></script>
+
+    </script></body>
+</html>

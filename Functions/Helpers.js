@@ -1,6 +1,8 @@
-// Helper functions used throughout the bot
+// These are helper functions used all over the bot.
+// Utility functions for common stuff like getting channels, roles, members, etc.
+// TODO: Add more helpers for error handling.
 
-// Check if a channel exists
+// Checks if a channel exists and is accessible.
 function getChannel(guild, channelId) {
     if (!channelId || !guild) return null;
     
@@ -12,7 +14,7 @@ function getChannel(guild, channelId) {
     return channel;
 }
 
-// Check if a role exists
+// Checks if a role exists in the guild.
 function getRole(guild, roleId) {
     if (!roleId || !guild) return null;
     
@@ -24,17 +26,30 @@ function getRole(guild, roleId) {
     return role;
 }
 
-// Get member (checks cache first)
+// Gets a member object, checks cache first because it's faster.
 async function getMember(guild, userId) {
     if (!userId || !guild) return null;
     
-    // Check cache first
-    let member = guild.members.cache.get(userId);
+    // Try cache first, it's way faster than fetching from Discord.
+    let member = guild.members?.cache.get(userId);
     if (member) return member;
     
-    // Fetch from Discord API if not cached
+    // If not cached, fetch from API with a timeout so we don't hang forever.
+    const fetchTimeout = (() => {
+        try {
+            const misc = require('../Config/constants/misc.json');
+            return misc.timeouts?.memberFetchTimeout || 5000;
+        } catch {
+            return 5000; // fallback to 5 seconds
+        }
+    })();
+
     try {
-        member = await guild.members.fetch(userId);
+        member = await Promise.race([
+            guild.members.fetch(userId),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), fetchTimeout))
+        ]);
+        
         return member || null;
     } catch (err) {
         console.warn(`[Helper] Could not fetch member ${userId}: ${err.message}`);
@@ -42,17 +57,20 @@ async function getMember(guild, userId) {
     }
 }
 
-// Get user from cache or fetch
+// Gets a user from cache or fetches them, with a timeout to prevent hanging.
 async function getUser(client, userId) {
     if (!userId || !client) return null;
     
     // Check cache first
-    let user = client.users.cache.get(userId);
+    let user = client.users?.cache.get(userId);
     if (user) return user;
     
-    // Fetch from Discord API if not cached
+    // Fetch from Discord API if not cached with timeout (5 second max)
     try {
-        user = await client.users.fetch(userId);
+        user = await Promise.race([
+            client.users.fetch(userId),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 5000))
+        ]);
         return user || null;
     } catch (err) {
         console.warn(`[Helper] Could not fetch user ${userId}: ${err.message}`);
@@ -75,13 +93,7 @@ async function safeChannelOp(channel, operation, callback) {
     }
 }
 
-/**
- * Safe role operation with error logging
- * @param {GuildMember} member - Discord member object
- * @param {Role} role - Discord role object
- * @param {string} operation - 'add' or 'remove'
- * @returns {Promise<boolean>} True if successful, false otherwise
- */
+// Safe role operation with error logging
 async function safeRoleOp(member, role, operation = 'add') {
     if (!member || !role) {
         console.error(`[Helper] Cannot perform role ${operation}: missing member or role`);
@@ -103,11 +115,7 @@ async function safeRoleOp(member, role, operation = 'add') {
     }
 }
 
-/**
- * Format large numbers (e.g., 1.2B, 500M)
- * @param {number} value - Number to format
- * @returns {string} Formatted string
- */
+// Format large numbers (e.g., 1.2B, 500M)
 function formatLargeNumber(value) {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
     if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
@@ -116,11 +124,7 @@ function formatLargeNumber(value) {
     return value.toString();
 }
 
-/**
- * Format duration in milliseconds to readable string
- * @param {number} ms - Milliseconds
- * @returns {string} Formatted duration string
- */
+// Format duration in milliseconds to readable string
 function formatDuration(ms) {
     const seconds = Math.floor((ms / 1000) % 60);
     const minutes = Math.floor((ms / (1000 * 60)) % 60);
@@ -136,13 +140,7 @@ function formatDuration(ms) {
     return parts.join(' ');
 }
 
-/**
- * Validate user input (check length, special chars)
- * @param {string} input - Input to validate
- * @param {number} minLength - Minimum length
- * @param {number} maxLength - Maximum length
- * @returns {Object} { valid: boolean, error: string|null }
- */
+// Validate user input (check length, special chars)
 function validateInput(input, minLength = 1, maxLength = 2000) {
     if (!input || typeof input !== 'string') {
         return { valid: false, error: 'Input must be a non-empty string' };
@@ -159,11 +157,7 @@ function validateInput(input, minLength = 1, maxLength = 2000) {
     return { valid: true, error: null };
 }
 
-/**
- * Escape markdown in text
- * @param {string} text - Text to escape
- * @returns {string} Escaped text
- */
+// Escape markdown in text
 function escapeMarkdown(text) {
     return text.replace(/([*_`\\~])/g, '\\$1');
 }

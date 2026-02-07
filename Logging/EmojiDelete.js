@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log emoji deletion events
 module.exports = (client) => {
 	client.on("emojiDelete", async(emoji) => {
     const logs = client.channels.cache.get(serverLogChannelId);
@@ -14,7 +15,7 @@ module.exports = (client) => {
                 { name: "Emoji ID", value: `\`${emoji.id}\``, inline: true },
                 { name: "Animated", value: emoji.animated ? "Yes" : "No", inline: true }
             )
-            .setThumbnail(emoji.url)
+            .setThumbnail(emoji.imageURL())
             .setTimestamp()
             .setFooter({ text: "Emoji Deleted" });
             return logs.send({embeds: [embed]});

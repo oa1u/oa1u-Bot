@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/profile.js" defer></script>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">👤 Profile</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link" id="adminLink">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="headerUsername">Loading...</span>
+                        <span class="role-badge" id="headerRole">user</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">user</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Error/Success Messages -->
+        <div class="message error hidden" id="errorMsg"></div>
+        <div class="message success hidden" id="successMsg"></div>
+
+        <!-- Profile Header Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-icon">👤</span>
+                Account Information
+            </div>
+            <div style="padding: 2rem;">
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div>
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Username</div>
+                        <div style="font-size: 1.25rem; font-weight: 600; color: var(--color-text);" id="profileUsername">-</div>
+                    </div>
+                    <div id="profileUserIdContainer" style="display: none;">
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">User ID</div>
+                        <div style="font-size: 1rem; color: var(--color-text); font-family: monospace;" id="profileUserId">-</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Role</div>
+                        <div>
+                            <span class="role-badge" id="profileRole" style="font-size: 1rem; padding: 0.5rem 1rem;">-</span>
+                        </div>
+                    </div>
+                    <div id="profileWarningsContainer" style="display: none;">
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Warnings</div>
+                        <div style="font-size: 1.25rem; font-weight: 600; color: var(--color-orange);" id="profileWarnings">0</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Created</div>
+                        <div style="font-size: 1rem; color: var(--color-text);" id="profileCreated">-</div>
+                    </div>
+                    <div id="profileMessagesContainer" style="display: none;">
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Messages Sent</div>
+                        <div style="font-size: 1.25rem; font-weight: 600; color: var(--color-text);" id="profileMessages">0</div>
+                    </div>
+                    <div id="profileLastLoginContainer">
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Last Login</div>
+                        <div style="font-size: 1rem; color: var(--color-text);" id="profileLastLogin">-</div>
+                    </div>
+                    <div id="profileBanStatusContainer" style="display: none;">
+                        <div style="color: var(--color-text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Ban Status</div>
+                        <div style="font-size: 1rem;">
+                            <span class="role-badge role-user" id="profileBanStatus" style="background: var(--color-green); font-size: 0.875rem; padding: 0.375rem 0.75rem;">✓ Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Actions (only for Discord users) -->
+        <div class="card" id="userActionsCard" style="display: none;">
+            <div class="card-header">
+                <span class="card-header-icon">⚡</span>
+                Actions
+            </div>
+            <div style="padding: 2rem;">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button onclick="warnUser()" class="btn" style="background: var(--color-orange); color: white; padding: 0.75rem 1.5rem; font-size: 1rem; min-width: 150px;">
+                        ⚠️ Warn
+                    </button>
+                    <button onclick="banUser()" class="btn" style="background: var(--color-red); color: white; padding: 0.75rem 1.5rem; font-size: 1rem; min-width: 150px;">
+                        🚫 Ban
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Stats -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-icon">📊</span>
+                Activity Statistics
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon green">✓</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="loginCount">-</div>
+                        <div class="stat-label">Login Sessions</div>
+                        <div class="stat-sublabel">Total logins</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon purple">⏱️</div>
+                    <div class="stat-content">
+                        <div class="stat-value" id="avgSessionTime">-</div>
+                        <div class="stat-label">Avg Session</div>
+                        <div class="stat-sublabel">Average session time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="card" id="changePasswordCard">
+            <div class="card-header">
+                <span class="card-header-icon">🔐</span>
+                Change Password
+            </div>
+            <div style="padding: 2rem;">
+                <form id="changePasswordForm" class="change-password-form">
+                    <div class="form-group">
+                        <label for="currentPassword" class="form-label">
+                            <span class="label-icon">🔑</span>
+                            Current Password
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="password" id="currentPassword" name="currentPassword" class="form-input" required minlength="8" placeholder="Enter your current password">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('currentPassword')">👁️</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newPassword" class="form-label">
+                            <span class="label-icon">🆕</span>
+                            New Password
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="password" id="newPassword" name="newPassword" class="form-input password-strength-input" required minlength="8" placeholder="Create a strong password" oninput="updatePasswordStrength(this.value)">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('newPassword')">👁️</button>
+                        </div>
+                        <div class="password-strength-meter" id="strengthMeter">
+                            <div class="strength-bar" id="strengthBar"></div>
+                        </div>
+                        <div class="password-strength-text" id="strengthText"></div>
+                        <div class="password-requirements" id="newPasswordRequirements">
+                            <div class="requirement">
+                                <span class="requirement-check" id="check-length">✓</span>
+                                <span>At least 8 characters</span>
+                            </div>
+                            <div class="requirement">
+                                <span class="requirement-check" id="check-upper">✓</span>
+                                <span>One uppercase letter</span>
+                            </div>
+                            <div class="requirement">
+                                <span class="requirement-check" id="check-lower">✓</span>
+                                <span>One lowercase letter</span>
+                            </div>
+                            <div class="requirement">
+                                <span class="requirement-check" id="check-number">✓</span>
+                                <span>One number</span>
+                            </div>
+                            <div class="requirement">
+                                <span class="requirement-check" id="check-special">✓</span>
+                                <span>One special character (@$!%*?&)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">
+                            <span class="label-icon">✔️</span>
+                            Confirm New Password
+                        </label>
+                        <div class="input-wrapper">
+                            <input type="password" id="confirmPassword" name="confirmPassword" class="form-input" required minlength="8" placeholder="Confirm your new password" oninput="validatePasswordMatch()">
+                            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('confirmPassword')">👁️</button>
+                        </div>
+                        <div class="password-match-indicator" id="matchIndicator"></div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-large" style="margin-top: 1rem;">
+                            <span id="changePasswordBtnText">🔄 Change Password</span>
+                            <div class="loading hidden" id="changePasswordLoading"></div>
+                        </button>
+                        <button type="reset" class="btn btn-secondary btn-large" style="margin-top: 1rem;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-icon">📋</span>
+                Recent Activity
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Details</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentActivityTable">
+                        <tr>
+                            <td colspan="3" style="text-align: center; padding: 2rem; color: var(--color-text-light);">
+                                <div class="loading show">Loading activity...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        // Toggle password visibility
+        function togglePasswordVisibility(fieldId) {
+            const field = document.getElementById(fieldId);
+            const isPassword = field.type === 'password';
+            field.type = isPassword ? 'text' : 'password';
+        }
+
+        // Update password strength indicator
+        function updatePasswordStrength(password) {
+            const requirements = [
+                { id: 'check-length', regex: /.{8,}/, text: 'At least 8 characters' },
+                { id: 'check-upper', regex: /[A-Z]/, text: 'One uppercase letter' },
+                { id: 'check-lower', regex: /[a-z]/, text: 'One lowercase letter' },
+                { id: 'check-number', regex: /\d/, text: 'One number' },
+                { id: 'check-special', regex: /[@$!%*?&]/, text: 'One special character' }
+            ];
+
+            let strength = 0;
+            requirements.forEach(req => {
+                const element = document.getElementById(req.id);
+                const isMet = req.regex.test(password);
+                
+                if (isMet) {
+                    element.classList.add('active');
+                    strength += 20;
+                } else {
+                    element.classList.remove('active');
+                }
+            });
+
+            // Update strength bar
+            const strengthBar = document.getElementById('strengthBar');
+            strengthBar.style.width = strength + '%';
+            
+            const strengthText = document.getElementById('strengthText');
+            let strengthLabel = '';
+            if (strength === 0) {
+                strengthLabel = '';
+            } else if (strength <= 20) {
+                strengthLabel = '🔴 Weak';
+                strengthBar.style.background = '#ff5b5b';
+            } else if (strength <= 40) {
+                strengthLabel = '🟠 Fair';
+                strengthBar.style.background = '#ff9d5b';
+            } else if (strength <= 60) {
+                strengthLabel = '🟡 Good';
+                strengthBar.style.background = '#ffd45b';
+            } else if (strength <= 80) {
+                strengthLabel = '🟢 Strong';
+                strengthBar.style.background = '#5bffb8';
+            } else {
+                strengthLabel = '✅ Very Strong';
+                strengthBar.style.background = '#5bffb8';
+            }
+            
+            strengthText.textContent = strengthLabel;
+        }
+
+        // Validate password match
+        function validatePasswordMatch() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const matchIndicator = document.getElementById('matchIndicator');
+
+            if (!confirmPassword) {
+                matchIndicator.classList.remove('show');
+                return;
+            }
+
+            matchIndicator.classList.add('show');
+            if (newPassword === confirmPassword && confirmPassword.length > 0) {
+                matchIndicator.classList.add('match');
+                matchIndicator.classList.remove('mismatch');
+                matchIndicator.textContent = '✓ Passwords match';
+            } else {
+                matchIndicator.classList.remove('match');
+                matchIndicator.classList.add('mismatch');
+                matchIndicator.textContent = '✗ Passwords do not match';
+            }
+        }
+
+        // Show/hide password requirements
+        document.getElementById('newPassword').addEventListener('focus', function() {
+            document.getElementById('newPasswordRequirements').classList.add('show');
+        });
+
+        document.getElementById('newPassword').addEventListener('blur', function() {
+            if (!this.value) {
+                document.getElementById('newPasswordRequirements').classList.remove('show');
+            }
+        });
+
+        // Load user profile
+        async function loadProfile() {
+            try {
+                // Check if viewing another user's profile
+                const urlParams = new URLSearchParams(window.location.search);
+                const viewUserId = urlParams.get('userId');
+                
+                // If viewing another user, fetch their data from /api/users/:userId
+                const endpoint = viewUserId ? `/api/users/${encodeURIComponent(viewUserId)}` : '/api/user';
+                const response = await fetch(endpoint);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Handle different response formats
+                    currentUser = viewUserId ? (data.user || data) : data;
+                    
+                    // Update header - handle both admin users and Discord users
+                    const displayUsername = currentUser.username || '-';
+                    const displayRole = viewUserId ? 'Discord User' : (currentUser.role || 'user').toUpperCase();
+                    
+                    document.getElementById('headerUsername').textContent = displayUsername;
+                    document.getElementById('headerRole').textContent = displayRole;
+                    document.getElementById('headerRole').className = 'role-badge role-' + (viewUserId ? 'user' : (currentUser.role || 'user'));
+                    
+                    // Update profile info
+                    document.getElementById('profileUsername').textContent = displayUsername;
+                    document.getElementById('profileRole').textContent = displayRole;
+                    document.getElementById('profileRole').className = 'role-badge role-' + (viewUserId ? 'user' : (currentUser.role || 'user'));
+                    
+                    // Handle different date fields for Discord users vs admin users
+                    const createdDate = currentUser.created_at || currentUser.joined_at ? new Date(currentUser.created_at || currentUser.joined_at) : null;
+                    document.getElementById('profileCreated').textContent = createdDate ? createdDate.toLocaleDateString() : 'Unknown';
+                    
+                    const lastLoginDate = currentUser.last_login ? new Date(currentUser.last_login) : null;
+                    document.getElementById('profileLastLogin').textContent = lastLoginDate ? 
+                        lastLoginDate.toLocaleString() : (viewUserId ? 'N/A' : 'First login');
+                    
+                    // Show Discord-specific fields if viewing a Discord user
+                    if (viewUserId) {
+                        document.getElementById('profileUserIdContainer').style.display = 'block';
+                        document.getElementById('profileUserId').textContent = currentUser.user_id || viewUserId;
+                        document.getElementById('profileWarningsContainer').style.display = 'block';
+                        document.getElementById('profileWarnings').textContent = currentUser.warnings || 0;
+                        document.getElementById('profileMessagesContainer').style.display = 'block';
+                        document.getElementById('profileMessages').textContent = (currentUser.messages || 0).toLocaleString();
+                        document.getElementById('profileBanStatusContainer').style.display = 'block';
+                        document.getElementById('profileLastLoginContainer').style.display = 'none';
+                        document.getElementById('userActionsCard').style.display = 'block';
+                        document.getElementById('changePasswordCard').style.display = 'none';
+                        
+                        // Update ban status
+                        const banStatusEl = document.getElementById('profileBanStatus');
+                        if (currentUser.is_banned) {
+                            banStatusEl.textContent = '🚫 Banned';
+                            banStatusEl.style.background = 'var(--color-red)';
+                        } else {
+                            banStatusEl.textContent = '✓ Active';
+                            banStatusEl.style.background = 'var(--color-green)';
+                        }
+                    } else {
+                        document.getElementById('profileUserIdContainer').style.display = 'none';
+                        document.getElementById('profileWarningsContainer').style.display = 'none';
+                        document.getElementById('profileMessagesContainer').style.display = 'none';
+                        document.getElementById('profileBanStatusContainer').style.display = 'none';
+                        document.getElementById('profileLastLoginContainer').style.display = 'block';
+                        document.getElementById('userActionsCard').style.display = 'none';
+                        document.getElementById('changePasswordCard').style.display = 'block';
+                    }
+                    
+                    // Show/hide nav links based on role
+                    const role = currentUser.role || 'moderator';
+                    if (role === 'owner') {
+                        document.getElementById('moderatorLink').style.display = 'inline-block';
+                        document.getElementById('adminLink').style.display = 'inline-block';
+                        document.getElementById('ownerLink').style.display = 'inline-block';
+                    } else if (role === 'admin') {
+                        document.getElementById('moderatorLink').style.display = 'inline-block';
+                        document.getElementById('adminLink').style.display = 'inline-block';
+                        document.getElementById('ownerLink').style.display = 'none';
+                    } else if (role === 'moderator') {
+                        document.getElementById('moderatorLink').style.display = 'inline-block';
+                        document.getElementById('adminLink').style.display = 'none';
+                        document.getElementById('ownerLink').style.display = 'none';
+                    }
+                    
+                    loadActivityStats();
+                    loadRecentActivity();
+                } else if (response.status === 401) {
+                    console.log('Unauthorized - redirecting to login');
+                    window.location.href = '/login';
+                } else {
+                    const errorData = await response.json();
+                    console.error('Failed to load profile:', errorData);
+                    showError('Failed to load profile: ' + (errorData.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showError('Failed to load profile information');
+            }
+        }
+
+        // Load activity statistics
+        function loadActivityStats() {
+            // Check if viewing a Discord user
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewUserId = urlParams.get('userId');
+            
+            const loginCountEl = document.getElementById('loginCount');
+            if (loginCountEl) {
+                if (viewUserId && currentUser) {
+                    // Show Discord stats instead
+                    loginCountEl.textContent = currentUser.level || '1';
+                    loginCountEl.parentElement.querySelector('.stat-label').textContent = 'Level';
+                    loginCountEl.parentElement.querySelector('.stat-sublabel').textContent = 'Current level';
+                    loginCountEl.parentElement.querySelector('.stat-icon').textContent = '📈';
+                } else {
+                    loginCountEl.textContent = (currentUser && currentUser.loginCount) ? currentUser.loginCount : '-';
+                }
+            }
+            
+            // Update avg session time from profile data
+            const avgSessionEl = document.getElementById('avgSessionTime');
+            if (avgSessionEl) {
+                if (viewUserId && currentUser) {
+                    // Show XP for Discord users
+                    avgSessionEl.textContent = currentUser.xp ? currentUser.xp.toLocaleString() + ' XP' : '0 XP';
+                    avgSessionEl.parentElement.querySelector('.stat-label').textContent = 'Experience';
+                    avgSessionEl.parentElement.querySelector('.stat-sublabel').textContent = 'Total XP earned';
+                    avgSessionEl.parentElement.querySelector('.stat-icon').textContent = '⭐';
+                } else {
+                    avgSessionEl.textContent = (currentUser && currentUser.avgSessionTime) ? currentUser.avgSessionTime : 'N/A';
+                }
+            }
+        }
+
+        // Load recent activity
+        async function loadRecentActivity() {
+            const tbody = document.getElementById('recentActivityTable');
+            tbody.innerHTML = `
+                <tr>
+                    <td>Login</td>
+                    <td>Logged into admin panel</td>
+                    <td>${new Date().toLocaleString()}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 2rem; color: var(--color-text-light);">
+                        Activity tracking coming soon
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Handle password change
+        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                showError('New passwords do not match');
+                return;
+            }
+            
+            // Validate password strength
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+            if (!passwordRegex.test(newPassword)) {
+                showError('Password must contain at least 8 characters, including uppercase, lowercase, number, and special character');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('changePasswordBtnText').style.display = 'none';
+            document.getElementById('changePasswordLoading').classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/api/user/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        currentPassword,
+                        newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Password changed successfully');
+                    document.getElementById('changePasswordForm').reset();
+                } else {
+                    showError(data.error || 'Failed to change password');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                showError('Failed to change password');
+            } finally {
+                document.getElementById('changePasswordBtnText').style.display = 'inline';
+                document.getElementById('changePasswordLoading').classList.add('hidden');
+            }
+        });
+
+        async function warnUser() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            if (!userId) return;
+            
+            const reason = prompt('Enter warning reason:');
+            if (!reason || reason.trim() === '') return;
+            
+            try {
+                const response = await fetch('/api/warn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        reason: reason.trim()
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    showSuccess('User warned successfully');
+                    // Reload profile to update warning count
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showError(data.error || 'Failed to warn user');
+                }
+            } catch (error) {
+                console.error('Error warning user:', error);
+                showError('Failed to warn user');
+            }
+        }
+
+        async function banUser() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('userId');
+            if (!userId) return;
+            
+            if (!confirm('Are you sure you want to ban this user?')) return;
+            
+            const reason = prompt('Enter ban reason:');
+            if (!reason || reason.trim() === '') return;
+            
+            try {
+                const response = await fetch('/api/ban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userId,
+                        reason: reason.trim()
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    showSuccess('User banned successfully');
+                    // Reload profile to update ban status
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showError(data.error || 'Failed to ban user');
+                }
+            } catch (error) {
+                console.error('Error banning user:', error);
+                showError('Failed to ban user');
+            }
+        }
+
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.textContent = message;
+            errorMsg.classList.remove('hidden');
+            setTimeout(() => errorMsg.classList.add('hidden'), 5000);
+        }
+
+        function showSuccess(message) {
+            const successMsg = document.getElementById('successMsg');
+            successMsg.textContent = message;
+            successMsg.classList.remove('hidden');
+            setTimeout(() => successMsg.classList.add('hidden'), 5000);
+        }
+
+        function logout() {
+            fetch('/logout', { method: 'POST' })
+                .then(() => window.location.href = '/login')
+                .catch(() => window.location.href = '/login');
+        }
+
+        // Load profile on page load
+        loadProfile();
+
+        function toggleUserDropdown() {
+            const menu = document.getElementById('userDropdownMenu');
+            const trigger = document.querySelector('.user-dropdown-trigger');
+            menu.classList.toggle('show');
+            trigger.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.user-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                document.getElementById('userDropdownMenu')?.classList.remove('show');
+                document.querySelector('.user-dropdown-trigger')?.classList.remove('active');
+            }
+        });
+
+        function syncDropdownInfo() {
+            const username = document.getElementById('headerUsername')?.textContent;
+            const role = document.getElementById('headerRole')?.textContent;
+            if (username) document.getElementById('dropdownUsername').textContent = username;
+            if (role) document.getElementById('dropdownRole').textContent = role;
+        }
+        setTimeout(syncDropdownInfo, 500);
+    </script>
+
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+
+    <script src="/public/version.js"></script>
+</body>
+</html>

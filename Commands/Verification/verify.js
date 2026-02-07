@@ -5,6 +5,9 @@ const { verifiedRoleId, administratorRoleId } = require("../../Config/constants/
 const { verificationChannelId, captchaLogChannelId } = require("../../Config/constants/channel.json");
 
 const userCaptchaData = {};
+// Track verification attempts per user to prevent spam
+const verificationAttempts = new Map();
+const VERIFICATION_TIMEOUT = 60 * 60 * 1000; // 1 hour cooldown between verifications
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,19 +25,45 @@ module.exports = {
     }
 
     const member = interaction.member;
+    const userId = interaction.user.id;
     const captchachannel = interaction.client.channels.cache.get(captchaLogChannelId);
+
+    // Check if member is still in guild (prevent verifying non-members)
+    if (!member || !member.guild) {
+      return sendErrorReply(
+        interaction,
+        'Error',
+        'Could not verify your membership in the server.'
+      );
+    }
 
     // Check if user is already verified
     if (member.roles.cache.has(verifiedRoleId)) {
       const alreadyVerifiedEmbed = new EmbedBuilder()
         .setColor(0x43B581)
         .setTitle('✅ Already Verified')
-        .setDescription('You are already verified and have access to the server!');
+        .setDescription('Your account has already been verified.')
+        .addFields(
+          { name: 'Status', value: '**Verified** ✓\n\nYou have full access to all server channels and features.', inline: false },
+          { name: 'What This Means', value: '• Access to all public channels\n• Ability to send messages\n• View member list\n• Participate in voice\n• Use bot commands', inline: false },
+          { name: 'Need Help?', value: 'If you believe this is an error, contact the server admins.', inline: false }
+        );
       
       return interaction.reply({ 
         embeds: [alreadyVerifiedEmbed], 
         flags: 64
       });
+    }
+
+    // Check verification attempt rate limiting
+    const lastAttempt = verificationAttempts.get(userId);
+    if (lastAttempt && Date.now() - lastAttempt < VERIFICATION_TIMEOUT) {
+      const minutesLeft = Math.ceil((VERIFICATION_TIMEOUT - (Date.now() - lastAttempt)) / 60000);
+      return sendErrorReply(
+        interaction,
+        'Rate Limited',
+        `You must wait ${minutesLeft} more minute${minutesLeft !== 1 ? 's' : ''} before attempting verification again.`
+      );
     }
 
     // Generate new captcha
@@ -69,20 +98,32 @@ module.exports = {
       const Server = member.guild.name;
 
       const e0 = new EmbedBuilder()
-        .setTitle(`🔐 Verification Required`)
-        .setColor(0x43B581)
-        .setFooter({ text: `Verification System` });
+        .setTitle(`🔐 Server Verification`)
+        .setColor(0x5865F2)
+        .setFooter({ text: `${member.guild.name} • Verification System` });
 
       const e1 = new EmbedBuilder(e0)
-        .setDescription(`Welcome to **${Server}**!\n\n✅ **Please enter the captcha code shown below to gain access to the server.**`)
+        .setDescription(`Welcome to **${Server}**!\n\nWe use automated verification to ensure a safe community. Please complete this verification to gain access.`)
         .addFields(
-          { name: `📋 Instructions`, value: `You have received this CAPTCHA as part of our verification process to confirm that you are not an automated bot.\n\n**Please enter the CAPTCHA code in this conversation.**`, inline: false },
-          { name: `⚠️ Need Help?`, value: `If you are unable to read the image, please run the \`/verify\` command again to get a new captcha.`, inline: false }
+          { name: '🤖 Why Verification?', value: 'This CAPTCHA test confirms you are a real person and not an automated bot or spam account.', inline: false },
+          { name: '📋 How to Verify', value: '1. Look at the image below\n2. Enter the code from the image\n3. Reply with just the code (e.g., ABC123)\n4. You\'ll gain instant access!', inline: false },
+          { name: '⏱️ Time Limit', value: 'You have unlimited attempts, but must verify within 1 hour.', inline: false },
+          { name: '❓ Can\'t Read It?', value: 'Run `/verify` again to get a new captcha image.', inline: false }
         )
         .setTimestamp();
 
-      const e2 = new EmbedBuilder(e0).setDescription(`❌ **Incorrect captcha code.**\n\nPlease try again by entering the correct code from the image above.`);
-      const e3 = new EmbedBuilder(e0).setDescription(`✅ **Verification Successful!**\n\nYou have successfully verified your identity in **${Server}** and have been assigned the verified role.\n\n🎉 You now have full access to the server!`).setColor("#00FF00");
+      const e2 = new EmbedBuilder(e0)
+        .setColor(0xF04747)
+        .setDescription(`❌ That code is incorrect.\n\nPlease try again. Check the image above carefully and enter the exact code shown.`);
+      
+      const e3 = new EmbedBuilder(e0)
+        .setColor(0x43B581)
+        .setDescription(`✅ Verification Successful!\n\nWelcome to **${Server}**! You have been granted access to all channels and features.`)
+        .addFields(
+          { name: 'You Now Have Access To:', value: '✅ All public channels\n✅ Voice channels\n✅ Bot commands\n✅ Member list\n✅ All server features', inline: false },
+          { name: 'Server Rules', value: 'Please review our rules in the #rules channel to avoid infractions.', inline: false },
+          { name: 'Get Started', value: 'Check the #introductions channel to introduce yourself!', inline: false }
+        );
 
       userCaptchaData[member.id] = { captchaValue: captchaCode };
 
@@ -104,8 +145,12 @@ module.exports = {
 
       const captchaSentEmbed = new EmbedBuilder()
         .setColor(0x43B581)
-        .setTitle('✅ Captcha Sent')
-        .setDescription('A new captcha has been sent to your DMs! Please check your messages.');
+        .setTitle('✅ Captcha Sent to Your DMs')
+        .setDescription('Check your direct messages for the verification captcha.')
+        .addFields(
+          { name: 'Next Step', value: 'Open the image in your DMs and reply with the code shown.', inline: false },
+          { name: 'Can\'t See DMs?', value: 'Make sure you have DMs enabled from server members. You can change this in your Discord settings.', inline: false }
+        );
       
       await interaction.reply({ 
         embeds: [captchaSentEmbed], 
@@ -134,13 +179,16 @@ module.exports = {
         time: 600000,
       }).then(async response => {
         try {
-          console.log(`Response received for ${member.user.tag}, size: ${response.size}`);
           if (response && response.size > 0) {
             const roleObj = member.guild.roles.cache.get(verifiedRoleId);
             console.log(`Role found: ${roleObj ? roleObj.name : 'NULL'}`);
             if (roleObj) {
               await member.roles.add(roleObj);
               console.log(`Role added to ${member.user.tag}`);
+              
+              // Track successful verification (prevents spam abuse)
+              verificationAttempts.set(userId, Date.now());
+              
               await dmChannel.send({ embeds: [e3] });
 
               // Log verification

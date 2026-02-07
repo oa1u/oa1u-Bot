@@ -1,8 +1,13 @@
 const { isModOrAdmin, getMemberFromMention } = require('./GetMemberFromMention');
 const { sendErrorReply } = require('./EmbedBuilders');
-const DatabaseManager = require('./DatabaseManager');
+const DatabaseManager = require('./MySQLDatabaseManager');
 const { getMember, getUser } = require('./Helpers');
 
+// Helper functions for moderation commands.
+// Checks permissions, logs actions, and sends DM notifications for mod actions.
+// Helps keep moderation commands clean and simple.
+
+// Checks if the person running the command can moderate the target user.
 async function canModerateMember(interaction, targetUser, actionName = 'action') {
     const executor = interaction.member;
     const guild = interaction.guild;
@@ -25,6 +30,7 @@ async function canModerateMember(interaction, targetUser, actionName = 'action')
         return false;
     }
 
+    // Make sure you can't moderate someone with a higher role than you.
     const targetMember = await getMember(guild, targetUser.id);
     if (targetMember && executor.roles.highest.position <= targetMember.roles.highest.position) {
         await sendErrorReply(
@@ -46,22 +52,37 @@ function addCase(userId, caseId, caseData) {
     DatabaseManager.addCase(userId, caseId, caseData);
 }
 
+// Tries to send a DM to a user. Doesn't always work if their DMs are off.
 async function sendModerationDM(user, embed) {
     try {
-        const dmUser = await getUser(null, user.id);
-        if (!dmUser) {
-            console.warn(`Could not fetch user for DM: ${user.tag}`);
-            return false;
+        // If it's a user object, just send it
+        if (user && typeof user.send === 'function') {
+            await user.send({ embeds: [embed] }).catch(dmErr => {
+                throw new Error(`DM send failed: ${dmErr.message}`);
+            });
+            return true;
         }
         
-        await dmUser.send({ embeds: [embed] });
-        return true;
+        // Try to DM them directly if they have an ID
+        if (user && user.id) {
+            try {
+                await user.send({ embeds: [embed] });
+                return true;
+            } catch (dmErr) {
+                console.warn(`Could not send DM to ${user.tag || user.id}: ${dmErr.message}`);
+                return false;
+            }
+        }
+        
+        console.warn(`Invalid user object for DM: ${user?.id || 'unknown'}`);
+        return false;
     } catch (err) {
-        console.warn(`Could not send DM to ${user.tag}: ${err.message}`);
+        console.warn(`DM operation failed for ${user?.tag || user?.id || 'unknown'}: ${err.message}`);
         return false;
     }
 }
 
+// Log moderation action to the server log channel
 async function logModerationAction(interaction, embed) {
     const { serverLogChannelId } = require('../Config/constants/channel.json');
     const loggingChannel = interaction.guild.channels.cache.get(serverLogChannelId);
@@ -89,10 +110,17 @@ async function resolveUser(interaction, input) {
 
     // Try getting from mention/string input
     if (typeof input === 'string') {
-        const user = await getMemberFromMention(interaction.guild, input)
-            .then(m => m?.user || null)
-            .catch(() => null);
-        if (user) return user;
+        try {
+            const user = await getMemberFromMention(interaction.guild, input)
+                .then(m => m?.user || null)
+                .catch(err => {
+                    console.warn(`[ModerationHelper] Could not resolve user from input '${input}': ${err.message}`);
+                    return null;
+                });
+            if (user) return user;
+        } catch (err) {
+            console.error(`[ModerationHelper] Error in resolveUser: ${err.message}`);
+        }
     }
 
     return null;

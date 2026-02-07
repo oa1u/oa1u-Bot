@@ -1,7 +1,8 @@
 const { resolve } = require("path");
 const { readdir } = require("fs").promises;
 
-async function * getFiles(dir) { // recursively find event files
+// Recursively finds event files in the Events folder.
+async function * getFiles(dir) {
 	const dirents = await readdir(dir, { withFileTypes: true });
 	for (const dirent of dirents) {
 		const res = resolve(dir, dirent.name);
@@ -13,6 +14,9 @@ async function * getFiles(dir) { // recursively find event files
 	}
 }
 
+let loadedEventCount = 0;
+
+// Loads all event files and attaches them to the Discord client.
 async function load(client) {
 	let eventCount = 0;
 	let errorCount = 0;
@@ -21,23 +25,23 @@ async function load(client) {
 	console.log('\n📡 Events (loading...)');
 	
 	for await (const fn of getFiles("./Events")) {
-		if (fn.endsWith("_loader.js")) continue; // do not load event loader as event
+		if (fn.endsWith("_loader.js")) continue; // Don't load the loader itself as an event.
 		
 		try {
 			const event = require(fn);
 			
-			// Skip files that don't have event properties
+			// Skip files that don't have event properties.
 			if (!event.name || (!event.call && !event.execute)) {
 				continue;
 			}
 			
-			// Support both 'call' and 'execute' patterns
+			// Support both 'call' and 'execute' patterns for event handlers.
 			let handler;
 			if (event.call) {
-				// 'call' pattern: call(client, args) where args is an array
+				// 'call' pattern: call(client, args) where args is an array.
 				handler = (...args) => event.call(client, args);
 			} else if (event.execute) {
-				// Standard Discord.js pattern: execute(...args, client)
+				// Standard Discord.js pattern: execute(...args, client).
 				handler = (...args) => event.execute(...args, client);
 			}
 			
@@ -59,8 +63,10 @@ async function load(client) {
 		}
 	}
 	
+	loadedEventCount = eventCount;
 	const errorMsg = errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : '';
 	console.log(`  ✅ ${eventCount} loaded${errorMsg}\n`);
 }
 
 module.exports = load;
+module.exports.getEventCount = () => loadedEventCount;

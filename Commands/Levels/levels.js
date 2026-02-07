@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const { getUserData, getUserRank, calculateRequiredXP } = require('../../Events/Leveling');
 
+// This command shows your current rank, XP progress, and a cool progress bar.
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('rank')
@@ -14,7 +15,7 @@ module.exports = {
     async execute(interaction) {
         const targetUser = interaction.options.getUser('user') || interaction.user;
         
-        // Don't allow checking bot ranks
+        // Don't let people check bot ranks—bots don't need XP!
         if (targetUser.bot) {
             const errorEmbed = new EmbedBuilder()
                 .setColor(0xF04747)
@@ -23,12 +24,12 @@ module.exports = {
             return interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
         }
 
-        const userData = getUserData(targetUser.id);
-        const rank = getUserRank(targetUser.id);
+        const userData = await getUserData(targetUser.id);
+        const rank = await getUserRank(targetUser.id);
         const requiredXP = calculateRequiredXP(userData.level + 1);
         const progress = Math.min(100, Math.max(0, Math.floor((userData.xp / requiredXP) * 100)));
 
-        // Create progress bar
+        // Make a progress bar so users can see how close they are to leveling up.
         const barLength = 20;
         const filledBars = Math.max(0, Math.min(barLength, Math.floor((progress / 100) * barLength)));
         const emptyBars = Math.max(0, barLength - filledBars);

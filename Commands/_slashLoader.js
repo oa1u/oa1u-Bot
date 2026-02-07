@@ -1,4 +1,4 @@
-const { resolve } = require("path");
+const { resolve, sep } = require("path");
 const { readdir } = require("fs").promises;
 const { Collection } = require("discord.js");
 

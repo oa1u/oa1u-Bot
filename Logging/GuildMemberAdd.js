@@ -1,10 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log when members join the server
 module.exports = (client) => {
 	client.on("guildMemberAdd", async(member) => {
         const logs = client.channels.cache.get(serverLogChannelId);
         if (!logs) return;
+        
+        // Calculate account age for alt detection
         const accountAge = Math.floor((Date.now() - member.user.createdTimestamp) / (1000 * 60 * 60 * 24));
         const memberCount = member.guild.memberCount;
         const embed = new EmbedBuilder()

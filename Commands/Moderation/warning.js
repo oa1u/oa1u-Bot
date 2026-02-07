@@ -1,6 +1,4 @@
-const moment = require("moment");
-const DatabaseManager = require('../../Functions/DatabaseManager');
-require("moment-duration-format");
+const DatabaseManager = require('../../Functions/MySQLDatabaseManager');
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { moderatorRoleId } = require("../../Config/constants/roles.json");
@@ -38,17 +36,17 @@ module.exports = {
     const caseID = interaction.options.getString('caseid');
     const userOption = interaction.options.getUser('user');
 
-    // Try to resolve the warning entry either by the provided user or by scanning all stored users
+    // Try to find the warning by user or by searching all users
     let targetUserId = userOption ? userOption.id : null;
     let warningEntry = null;
 
     if (targetUserId) {
-      const userRecord = warnsDB.get(targetUserId);
+      const userRecord = await warnsDB.get(targetUserId);
       warningEntry = userRecord?.warns?.[caseID] || null;
     }
 
     if (!warningEntry) {
-      const allWarns = warnsDB.all();
+      const allWarns = await warnsDB.all();
       for (const [userId, data] of Object.entries(allWarns)) {
         const entry = data?.warns?.[caseID];
         if (entry) {
@@ -64,7 +62,8 @@ module.exports = {
     const targetUser = await interaction.client.users.fetch(targetUserId).catch(() => null);
     const userLabel = targetUser ? `${targetUser.tag} (${targetUserId})` : targetUserId;
     const moderatorLabel = warningEntry.moderator ? `<@${warningEntry.moderator}> (${warningEntry.moderator})` : 'Unknown';
-    const totalWarns = Object.keys(warnsDB.get(targetUserId)?.warns || {}).length;
+    const userData = await warnsDB.get(targetUserId);
+    const totalWarns = Object.keys(userData?.warns || {}).length;
 
     const em = new EmbedBuilder()
       .setTitle(`Case ${caseID}`)

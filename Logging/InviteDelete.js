@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log invite deletion events
 module.exports = (client) => {
 	client.on("inviteDelete", async(invite) => {
     const logs = client.channels.cache.get(serverLogChannelId);

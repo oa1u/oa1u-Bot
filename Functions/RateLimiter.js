@@ -1,45 +1,60 @@
-// Prevents command spam
+// This class helps prevent command spam and abuse.
+// You can set up custom rate limits for each user and command.
+const misc = require('../Config/constants/misc.json');
+
 class RateLimiter {
     constructor() {
         this.usages = new Map();
+        // Grab rate limit settings from the config, or use defaults if missing.
+        const rateLimitConfig = misc.rateLimit || {};
+        const limitsConfig = misc.limits || {};
+
         this.limits = {
-            global: { max: 10, window: 10000 }, // 10 commands per 10s
-            perCommand: { max: 3, window: 5000 } // 3 of same command per 5s
+            global: {
+                max: rateLimitConfig.globalMax || 10,
+                window: rateLimitConfig.globalWindow || 10000
+            },
+            perCommand: {
+                max: rateLimitConfig.perCommandMax || 3,
+                window: rateLimitConfig.perCommandWindow || 5000
+            }
         };
+        this.maxTrackedUsers = limitsConfig.maxTrackedRateLimitUsers || 5000;
         
-        setInterval(() => this.cleanup(), 60000); // cleanup every minute
+        // Clean up old usage records every minute so things stay tidy.
+        setInterval(() => this.cleanup(), 60000);
     }
 
-    // Check if user hit rate limit
+    // Checks if a user has hit their rate limit for a command.
     checkLimit(userId, commandName) {
         const now = Date.now();
         
-        // Get or create user usage tracking
+        // Make sure we have a usage tracker for this user.
         if (!this.usages.has(userId)) {
             this.usages.set(userId, new Map());
         }
         
         const userUsages = this.usages.get(userId);
         
-        // Get global command usage (all commands)
+        // Count all commands used by this user.
         let globalUsage = [];
         userUsages.forEach(timestamps => {
             globalUsage.push(...timestamps);
         });
         
-        // Filter to recent global usage
+        // Only look at commands used recently.
         globalUsage = globalUsage.filter(
             timestamp => now - timestamp < this.limits.global.window
         );
         
-        // Check global rate limit
+        // If they've used too many commands globally, block them for a bit.
         if (globalUsage.length >= this.limits.global.max) {
             const oldestTimestamp = Math.min(...globalUsage);
             const retryAfter = Math.ceil((oldestTimestamp + this.limits.global.window - now) / 1000);
             return { limited: true, retryAfter, type: 'global' };
         }
         
-        // Get command-specific usage
+        // Track usage for the specific command.
         if (!userUsages.has(commandName)) {
             userUsages.set(commandName, []);
         }
@@ -61,8 +76,20 @@ class RateLimiter {
         return { limited: false };
     }
 
-    // Track command usage
+    // Records that a user used a command, so we can enforce limits.
     recordUsage(userId, commandName) {
+        // If we're tracking too many users, clean up to avoid memory issues.
+        if (!this.usages.has(userId) && this.usages.size >= this.maxTrackedUsers) {
+            console.warn(`[RateLimiter] Max tracked users reached (${this.maxTrackedUsers}), forcing cleanup`);
+            this.cleanup();
+            
+            // If still at max after cleanup, remove oldest user
+            if (this.usages.size >= this.maxTrackedUsers) {
+                const firstKey = this.usages.keys().next().value;
+                this.usages.delete(firstKey);
+            }
+        }
+        
         if (!this.usages.has(userId)) {
             this.usages.set(userId, new Map());
         }
@@ -76,14 +103,14 @@ class RateLimiter {
         userUsages.get(commandName).push(Date.now());
     }
 
-    // Check if user bypasses rate limits
+    // Checks if a user should bypass rate limits (like admins or special roles).
     isExempt(member, exemptRoleIds = []) {
         if (!member) return false;
         
-        // Admins are exempt
+        // Admins don't get rate limited.
         if (member.permissions?.has('Administrator')) return true;
         
-        // Check for specific exempt roles
+        // Some roles can be exempt from rate limits too.
         if (exemptRoleIds.length > 0) {
             return exemptRoleIds.some(roleId => member.roles.cache.has(roleId));
         }
@@ -91,40 +118,43 @@ class RateLimiter {
         return false;
     }
 
-    // Remove old usage records
+    // Cleans up old usage records so we don't waste memory.
     cleanup() {
         const now = Date.now();
-        const cutoff = now - Math.max(this.limits.global.window, this.limits.perCommand.window) - 60000;
+        const maxWindow = Math.max(this.limits.global.window, this.limits.perCommand.window);
+        const cutoff = now - maxWindow - 60000; // Extra 60s buffer
         
-        let cleaned = 0;
+        let cleanedRecords = 0;
+        let cleanedUsers = 0;
         
-        this.usages.forEach((userUsages, userId) => {
-            userUsages.forEach((timestamps, commandName) => {
-                const filtered = timestamps.filter(timestamp => timestamp > cutoff);
+        // Go through all users and commands, and remove old records.
+        for (const [userId, userUsages] of this.usages.entries()) {
+            for (const [commandName, timestamps] of userUsages.entries()) {
+                // Filter out expired timestamps
+                const validTimestamps = timestamps.filter(ts => ts > cutoff);
                 
-                if (filtered.length === 0) {
+                if (validTimestamps.length === 0) {
                     userUsages.delete(commandName);
-                    cleaned++;
-                } else if (filtered.length !== timestamps.length) {
-                    userUsages.set(commandName, filtered);
+                    cleanedRecords++;
+                } else if (validTimestamps.length !== timestamps.length) {
+                    userUsages.set(commandName, validTimestamps);
+                    cleanedRecords++;
                 }
-            });
+            }
             
-            // Remove user if no commands tracked
+            // If a user has no commands left, remove them from tracking.
             if (userUsages.size === 0) {
                 this.usages.delete(userId);
+                cleanedUsers++;
             }
-        });
+        }
         
-        if (cleaned > 0) {
-            console.log(`[RateLimiter] Cleaned up ${cleaned} expired usage records`);
+        if (cleanedRecords > 0 || cleanedUsers > 0) {
+            console.log(`[RateLimiter] Cleanup: ${cleanedRecords} records cleaned, ${cleanedUsers} users removed (${this.usages.size} users remaining)`);
         }
     }
 
-    /**
-     * Get current usage stats
-     * @returns {Object} Usage statistics
-     */
+    // Returns stats about how many users and records we're tracking.
     getStats() {
         return {
             trackedUsers: this.usages.size,
@@ -134,13 +164,11 @@ class RateLimiter {
         };
     }
 
-    /**
-     * Clear all rate limit data (for testing)
-     */
+    // Clears all usage records and resets the limiter.
     reset() {
         this.usages.clear();
     }
 }
 
-// Export singleton instance
+// Export a single instance so the whole bot uses the same limiter.
 module.exports = new RateLimiter();

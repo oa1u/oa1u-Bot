@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unauthorized Access - Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+        <script>
+        // Hide sign in/register and show dashboard if already authenticated
+        fetch('/api/csrf', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.authenticated) {
+                    document.getElementById('loginBtn').style.display = 'none';
+                    document.getElementById('registerBtn').style.display = 'none';
+                    document.getElementById('dashboardBtn').style.display = 'inline-block';
+                }
+            });
+        </script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .error-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 2rem 1rem;
+        }
+        
+        .error-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: var(--color-red);
+        }
+        
+        .error-message {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .page-footer {
+            margin-top: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-icon">🔒</div>
+            <h1 class="error-title">Access Denied</h1>
+            <p class="error-message">
+                You don't have permission to access this page. Please log in with an authorized account to continue.
+            </p>
+            <div class="error-actions">
+                <a href="/login" class="btn btn-primary" id="loginBtn">Sign In</a>
+                <a href="/register" class="btn btn-primary" id="registerBtn">Register</a>
+                <a href="/dashboard" class="btn btn-secondary" id="dashboardBtn" style="display:none">Go to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+    <script src="/public/version.js"></script>
+</body>
+</html>

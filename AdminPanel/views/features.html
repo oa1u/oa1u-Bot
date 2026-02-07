@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - Bot Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+       
+
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">✨ Features</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link" id="adminLink">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="headerUsername">Loading...</span>
+                        <span class="role-badge" id="headerRole">user</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">user</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="features-summary" style="margin-bottom:2.5rem;">
+            <div class="card" style="background:linear-gradient(90deg,#23272a 60%,#5b7fff 100%);color:#fff;box-shadow:0 4px 24px 0 #000a;">
+                <div style="display:flex;align-items:center;gap:1.5rem;">
+                    <div style="font-size:2.5rem;">🤖</div>
+                    <div>
+                        <h2 style="margin:0 0 0.5rem 0;font-size:2rem;">All-in-One Discord Bot</h2>
+                        <div style="font-size:1.1rem;opacity:0.92;">Powerful moderation, fun, utility, and management features for your community. Easy to use, highly customizable, and always improving.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <div class="tabs" id="featuresTabs">
+            <button class="tab active" data-tab="moderation"><span class="tab-icon">🛡️</span>Moderation</button>
+            <button class="tab" data-tab="fun"><span class="tab-icon">🎲</span>Fun</button>
+            <button class="tab" data-tab="utility"><span class="tab-icon">🛠️</span>Utility</button>
+            <button class="tab" data-tab="management"><span class="tab-icon">📋</span>Management</button>
+            <button class="tab" data-tab="levels"><span class="tab-icon">🏆</span>Levels</button>
+            <button class="tab" data-tab="verification"><span class="tab-icon">✅</span>Verification</button>
+        </div>
+        <div class="tab-content active" id="tab-moderation">
+            <div class="card feature-card moderation-card">
+                <div class="feature-header">
+                    <div>
+                        <h3>Moderation Features</h3>
+                        <div class="feature-desc">Keep your community safe and organized with advanced moderation tools.</div>
+                    </div>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5b7fff;">🔨</span> <b>Ban/Kick/Timeout:</b> Instantly remove or timeout problematic users.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5b7fff;">⚠️</span> <b>Warn System:</b> Issue, track, and clear warnings for users.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5b7fff;">🤖</span> <b>AutoMod:</b> Automatic filtering of bad words, spam, and unwanted content.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5b7fff;">🧹</span> <b>Message Deletion:</b> Bulk delete messages for quick cleanups.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5b7fff;">📋</span> <b>Case Logging:</b> All actions are logged for transparency and review.</div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-content" id="tab-fun">
+            <div class="card feature-card fun-card">
+                <div class="feature-header">
+                    <div>
+                        <h3>Fun Features</h3>
+                        <div class="feature-desc">Boost engagement and make your server lively with interactive games and jokes.</div>
+                    </div>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item"><span class="feature-bullet" style="color:#ffd45b;">🎱</span> <b>8ball, Coinflip, Trivia:</b> Entertaining commands for your community.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#ffd45b;">😂</span> <b>Jokes, Facts, Pickup Lines:</b> Lighten the mood with fun responses.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#ffd45b;">🔥</span> <b>Roast & Compliment:</b> Playful interactions for users.</div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-content" id="tab-utility">
+            <div class="card feature-card utility-card">
+                <div class="feature-header">
+                    <div>
+                        <h3>Utility Features</h3>
+                        <div class="feature-desc">Handy tools to make server management and daily tasks easier.</div>
+                    </div>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5bffb8;">⏰</span> <b>Reminders & Polls:</b> Set reminders and create polls easily.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5bffb8;">ℹ️</span> <b>Server Info & User Info:</b> Get detailed information about the server and users.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5bffb8;">💸</span> <b>Crypto & Define:</b> Get crypto prices and word definitions instantly.</div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-content" id="tab-management">
+            <div class="card feature-card management-card">
+                <div class="feature-header">
+                    <div>
+                        <h3>Management Features</h3>
+                        <div class="feature-desc">Streamline your server’s growth and feedback with management tools.</div>
+                    </div>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item"><span class="feature-bullet" style="color:#ff9d5b;">🎁</span> <b>Giveaways:</b> Host and manage giveaways with ease.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#ff9d5b;">💡</span> <b>Suggestions:</b> Collect and review user suggestions.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#ff9d5b;">📢</span> <b>Announcements:</b> Send announcements to your community.</div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-content" id="tab-levels">
+            <div class="card feature-card levels-card">
+                <div class="feature-header">
+                    <div>
+                        <h3>Levels & XP</h3>
+                        <div class="feature-desc">Motivate participation and recognize your top members.</div>
+                    </div>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item"><span class="feature-bullet" style="color:#b55bff;">📈</span> <b>Leveling System:</b> Reward active users with XP and levels.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#b55bff;">🏅</span> <b>Leaderboard:</b> See who’s most active in your community.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#b55bff;">⚙️</span> <b>Customizable XP:</b> Adjust XP gain and level rewards.</div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-content" id="tab-verification">
+            <div class="card feature-card verification-card">
+                <div class="feature-header">
+                    <div>
+                        <h3>Verification</h3>
+                        <div class="feature-desc">Protect your server with robust verification options.</div>
+                    </div>
+                </div>
+                <div class="feature-list">
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5bffb8;">🤖</span> <b>Captcha Verification:</b> Prevent bots and fake accounts from joining.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5bffb8;">🏷️</span> <b>Role Assignment:</b> Automatically assign roles to verified users.</div>
+                    <div class="feature-item"><span class="feature-bullet" style="color:#5bffb8;">🔧</span> <b>Customizable Flows:</b> Adapt verification to your server’s needs.</div>
+                </div>
+            </div>
+        </div>
+    </main>
+        <style>
+        .feature-card {
+            margin-bottom: 2.5rem;
+            border: none !important;
+            box-shadow: 0 2px 16px 0 #0002;
+            padding: 2.25rem 2rem 2rem 2rem;
+            border-radius: 1.25rem;
+            background: var(--bg-card);
+        }
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .feature-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 3.5rem;
+            height: 3.5rem;
+            font-size: 2rem;
+            border-radius: 1rem;
+            background: #23272a;
+            box-shadow: 0 2px 8px #0001;
+        }
+        .feature-desc {
+            color: #a0a0a0;
+            font-size: 1.08rem;
+            margin-top: 0.15rem;
+        }
+        .feature-list {
+            margin-top: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .feature-item {
+            font-size: 1.08rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #23272a;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.25rem;
+            box-shadow: 0 1px 4px #0001;
+        }
+        .feature-bullet {
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
+        }
+        </style>
+    
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+    <script src="/public/features.js" defer></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/version.js"></script>
+    <script src="/public/notifications.js" defer></script>
+</body>
+</html>

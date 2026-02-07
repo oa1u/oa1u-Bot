@@ -5,6 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "admin": "node adminPanel.js",
+    "start:all": "node startAll.js",
+    "migrate": "node migrate-to-mysql.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -16,12 +19,23 @@
   "dependencies": {
     "@discordjs/builders": "^1.13.1",
     "@discordjs/rest": "^2.6.0",
+    "bcrypt": "^6.0.0",
+    "body-parser": "^2.2.2",
     "captcha-canvas": "^3.4.0",
+    "chart.js": "^4.5.1",
+    "cookie-parser": "^1.4.7",
     "discord.js": "^14.25.1",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "express-mysql-session": "^3.0.3",
+    "express-session": "^1.19.0",
+    "express-socket.io-session": "^1.3.5",
+    "helmet": "^8.1.0",
     "moment": "^2.30.1",
     "moment-duration-format": "^2.3.2",
-    "moment-timezone": "^0.6.0"
+    "moment-timezone": "^0.6.0",
+    "mysql2": "^3.16.3",
+    "socket.io": "^4.8.3"
   },
   "overrides": {
     "undici": "^6.23.0"

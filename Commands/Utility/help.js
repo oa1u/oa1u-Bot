@@ -2,6 +2,8 @@ const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js'
 const { ServerInvite } = require("../../Config/main.json");
 const { administratorRoleId, moderatorRoleId } = require("../../Config/constants/roles.json");
 
+// The help command shows a categorized list of all available commands—easy to find what you need.
+// Note to self: Remember to update categories when adding new commands!
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('help')
@@ -24,7 +26,7 @@ module.exports = {
   async execute(interaction) {
     const category = interaction.options.getString('category');
     
-    // Check user roles
+    // Figure out which commands the user can see based on their roles.
     const member = interaction.member;
     const hasAdminRole = member.roles.cache.has(administratorRoleId);
     const hasModRole = member.roles.cache.has(moderatorRoleId);
@@ -33,7 +35,7 @@ module.exports = {
       return string.charAt(0).toUpperCase() + string.slice(1);
     }
 
-    // Category emojis
+    // Emojis for each command category—makes the help menu more fun.
     const categoryIcons = {
       management: '⚙️',
       moderation: '🛡️',
@@ -44,7 +46,7 @@ module.exports = {
       verification: '🔐'
     };
 
-    // Build category list based on permissions
+    // Show different categories depending on the user's role.
     let categoryList = [];
     if (hasAdminRole) {
       categoryList.push('⚙️ **Management** - Server management commands');
@@ -89,7 +91,7 @@ module.exports = {
       return interaction.reply({ embeds: [embedhelp], flags: MessageFlags.Ephemeral });
     }
 
-    // Check permissions
+    // Make sure the user has permission to view this category.
     if (category === 'management' && !hasAdminRole) {
       const adminRole = interaction.guild.roles.cache.get(administratorRoleId);
       const roleName = adminRole ? adminRole.name : 'Administrator';
@@ -108,7 +110,7 @@ module.exports = {
       });
     }
 
-    // Count commands first
+    // Build the command list for this category.
     let count = 0;
     const commands = [];
     for (const [, command] of interaction.client.slashCommands) {
@@ -143,10 +145,10 @@ module.exports = {
   }
 };
 
-// Helper function to get emoji for commands
+// Helper function to get the right emoji for each command category.
 function getCommandEmoji(commandName) {
   const emojiMap = {
-    // Management
+    // Management commands
     'announce': '📢',
     'eannounce': '📢',
     'checkban': '🔍',
@@ -155,7 +157,7 @@ function getCommandEmoji(commandName) {
     'clearwarns': '🧹',
     'giveaway': '🎉',
     'manage': '🛠️',
-    // Moderation
+    // Moderation commands
     'warn': '⚠️',
     'warning': '📋',
     'warns': '📊',
@@ -165,7 +167,7 @@ function getCommandEmoji(commandName) {
     'timeout': '⏱️',
     'untimeout': '✅',
     'deletemsg': '🗑️',
-    // Utility
+    // Utility commands
     'help': '❓',
     'userinfo': '👤',
     'serverinfo': '🏰',
@@ -174,25 +176,25 @@ function getCommandEmoji(commandName) {
     'poll': '📊',
     'reminders': '🔔',
     'crypto': '💰',
-    // Leveling
+    // Leveling commands
     'rank': '🏆',
     'leaderboard': '🥇',
     'setlevel': '⚡',
-    // Fun
+    // Fun commands
     '8ball': '🎱',
     'trivia': '🧠',
     'coinflip': '🎲',
     'fact': '💡',
     'roast': '🔥',
     'pickup': '💘',
-    // Ticket
+    // Ticket commands
     'ticket': '🎫',
     'close': '🔒',
     'markhandled': '✅',
     'claim': '👤',
     'adduser': '➕',
     'removeuser': '➖',
-    // Verification
+    // Verification commands
     'verify': '🔐'
   };
   

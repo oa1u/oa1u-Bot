@@ -1,15 +1,19 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { administratorRoleId } = require("../../Config/constants/roles.json");
-const { announcementChannelId } = require("../../Config/constants/channel.json")
+const { announcementChannelId } = require("../../Config/constants/channel.json");
 
+// Format long messages so they fit nicely in embed fields—no ugly cutoffs.
+// Note to self: Would be cool to add templates for common announcements.
 function formatMessageForEmbed(message) {
   const MAX_DESC_LENGTH = 4096;
   
+  // If the message fits in the description, just use that.
   if (message.length <= MAX_DESC_LENGTH) {
     return { type: 'description', content: message };
   }
   
+  // Otherwise, split the message into fields (max 1024 chars each).
   const chunks = [];
   const lines = message.split('\n');
   let currentChunk = '';
@@ -31,20 +35,45 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('announce')
     .setDescription('Post an announcement')
-    .addStringOption(option =>
-      option.setName('title')
-        .setDescription('Announcement title')
-        .setRequired(true)
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('normal')
+        .setDescription('Post a regular announcement')
+        .addStringOption(option =>
+          option.setName('title')
+            .setDescription('Announcement title')
+            .setRequired(true)
+        )
+        .addStringOption(option =>
+          option.setName('message')
+            .setDescription('Announcement message')
+            .setRequired(true)
+        )
+        .addStringOption(option =>
+          option.setName('color')
+            .setDescription('Embed color (hex code or name)')
+            .setRequired(false)
+        )
     )
-    .addStringOption(option =>
-      option.setName('message')
-        .setDescription('Announcement message')
-        .setRequired(true)
-    )
-    .addStringOption(option =>
-      option.setName('color')
-        .setDescription('Embed color (hex code or name)')
-        .setRequired(false)
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('everyone')
+        .setDescription('Post an announcement with @everyone ping')
+        .addStringOption(option =>
+          option.setName('title')
+            .setDescription('Announcement title')
+            .setRequired(true)
+        )
+        .addStringOption(option =>
+          option.setName('message')
+            .setDescription('Announcement message')
+            .setRequired(true)
+        )
+        .addStringOption(option =>
+          option.setName('color')
+            .setDescription('Embed color (hex code or name)')
+            .setRequired(false)
+        )
     )
     .setDefaultMemberPermissions(0x8),
   category: "management",
@@ -58,6 +87,17 @@ module.exports = {
       return interaction.reply({ embeds: [Prohibited], flags: MessageFlags.Ephemeral });
     }
     
+    const subcommand = interaction.options.getSubcommand();
+    
+    switch (subcommand) {
+      case 'normal':
+        return await this.sendAnnouncement(interaction, false);
+      case 'everyone':
+        return await this.sendAnnouncement(interaction, true);
+    }
+  },
+  
+  async sendAnnouncement(interaction, pingEveryone) {
     const announceChan = interaction.client.channels.cache.get(announcementChannelId);
     if (!announceChan) {
       const notFoundEmbed = new EmbedBuilder()
@@ -69,11 +109,12 @@ module.exports = {
 
     const title = interaction.options.getString('title').trim();
     const message = interaction.options.getString('message').trim();
-    const colorInput = interaction.options.getString('color') || '5865F2';
+    const defaultColor = pingEveryone ? 'F04747' : '5865F2';
+    const colorInput = interaction.options.getString('color') || defaultColor;
 
     const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
 
-    // Check title length
+    // Double check that the title isn't too long.
     if (title.length < 3 || title.length > 100) {
       const titleEmbed = new EmbedBuilder()
         .setColor(0xF04747)
@@ -82,7 +123,7 @@ module.exports = {
       return interaction.reply({ embeds: [titleEmbed], flags: MessageFlags.Ephemeral });
     }
 
-    // Check message length
+    // Make sure the message isn't too long for Discord.
     if (!message || message.trim().split(' ').length < 3) {
       const shortMsgEmbed = new EmbedBuilder()
         .setColor(0xF04747)
@@ -91,8 +132,8 @@ module.exports = {
       return interaction.reply({ embeds: [shortMsgEmbed], flags: MessageFlags.Ephemeral });
     }
 
-    // Parse color
-    let embedColor = 0x5865F2;
+    // Figure out what color to use for the embed.
+    let embedColor = pingEveryone ? 0xF04747 : 0x5865F2;
     try {
       if (colorInput.startsWith('#')) {
         embedColor = parseInt(colorInput.slice(1), 16);
@@ -103,7 +144,7 @@ module.exports = {
       const colorEmbed = new EmbedBuilder()
         .setColor(0xF04747)
         .setTitle('❌ Invalid Color')
-        .setDescription('Need a valid hex color (e.g., #5865F2 or 5865F2)!');
+        .setDescription('Please provide a valid hex color code (e.g., #5865F2 or 5865F2)!');
       return interaction.reply({ embeds: [colorEmbed], flags: MessageFlags.Ephemeral });
     }
 
@@ -115,7 +156,7 @@ module.exports = {
       .setFooter({ text: `Announced by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
       .setTimestamp();
 
-    // Format message based on length
+    // Format the message based on how long it is.
     const formatted = formatMessageForEmbed(message);
     if (formatted.type === 'description') {
       em.setDescription(formatted.content);
@@ -129,12 +170,17 @@ module.exports = {
       );
     }
 
-    await announceChan.send({ embeds: [em] });
+    const messageContent = pingEveryone ? '@everyone' : null;
+    await announceChan.send({ content: messageContent, embeds: [em] });
 
     const successEmbed = new EmbedBuilder()
       .setColor(0x43B581)
-      .setTitle('✅ Sent!')
-      .setDescription(`Posted to <#${announcementChannelId}>`)
+      .setTitle(pingEveryone ? '✅ Announcement Sent with @everyone' : '✅ Sent!')
+      .setDescription(
+        pingEveryone 
+          ? `Your announcement has been posted to <#${announcementChannelId}> and @everyone was pinged`
+          : `Posted to <#${announcementChannelId}>`
+      )
       .addFields(
         { name: 'Title', value: formattedTitle, inline: true },
         { name: 'Length', value: `${message.length} chars`, inline: true }

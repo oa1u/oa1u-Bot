@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 
+// Flip a coin and see if you get heads or tails—totally random, just like real life!
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('coinflip')

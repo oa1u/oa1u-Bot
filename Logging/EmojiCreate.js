@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log emoji creation events
 module.exports = (client) => {
 	client.on("emojiCreate", async(emoji) => {
     const logs = client.channels.cache.get(serverLogChannelId);
@@ -14,9 +15,9 @@ module.exports = (client) => {
                 { name: "Emoji Name", value: `\`:${emoji.name}:\``, inline: true },
                 { name: "Emoji ID", value: `\`${emoji.id}\``, inline: true },
                 { name: "Animated", value: emoji.animated ? "Yes" : "No", inline: true },
-                { name: "URL", value: `[Click Here](${emoji.url})` }
+                { name: "URL", value: `[Click Here](${emoji.imageURL()})` }
             )
-            .setThumbnail(emoji.url)
+            .setThumbnail(emoji.imageURL())
             .setTimestamp()
             .setFooter({ text: "Emoji Created" });
              if (emoji.author) embed.addFields({ name: "Added By", value: `${emoji.author.tag} (${emoji.author.id})` });

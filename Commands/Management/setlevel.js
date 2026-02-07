@@ -20,6 +20,8 @@ module.exports = {
                         .setDescription('Total XP to set')
                         .setRequired(true)
                         .setMinValue(0)
+                        .setMaxValue(999999999) // Prevent integer overflow
+                            .setMaxValue(999999999) // Prevent crazy big numbers from breaking things
                 )
         )
         .addSubcommand(subcommand =>
@@ -51,7 +53,7 @@ module.exports = {
         ),
     category: 'management',
     async execute(interaction) {
-        // Check permissions
+        // Only admins are allowed to use this command.
         if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
             await sendErrorReply(
                 interaction,
@@ -75,7 +77,7 @@ module.exports = {
 
         if (subcommand === 'xp') {
             const amount = interaction.options.getInteger('amount');
-            const userData = setUserXP(targetUser.id, amount);
+            const userData = await setUserXP(targetUser.id, amount);
 
             await sendSuccessReply(
                 interaction,
@@ -86,13 +88,13 @@ module.exports = {
         } else if (subcommand === 'level') {
             const level = interaction.options.getInteger('amount');
             
-            // Calculate total XP needed for the target level
+            // Figure out how much XP is needed for the chosen level.
             let totalXP = 0;
             for (let i = 1; i < level; i++) {
                 totalXP += calculateRequiredXP(i);
             }
             
-            const userData = setUserXP(targetUser.id, totalXP);
+            const userData = await setUserXP(targetUser.id, totalXP);
 
             await sendSuccessReply(
                 interaction,
@@ -101,8 +103,8 @@ module.exports = {
                 `Total XP: **${totalXP.toLocaleString()}**`
             );
         } else if (subcommand === 'reset') {
-            const oldData = getUserData(targetUser.id);
-            resetUser(targetUser.id);
+            const oldData = await getUserData(targetUser.id);
+            await resetUser(targetUser.id);
 
             await sendSuccessReply(
                 interaction,

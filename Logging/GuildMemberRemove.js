@@ -1,10 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log when members leave the server
 module.exports = (client) => {
 	client.on("guildMemberRemove", async(member) => {
     const logs = client.channels.cache.get(serverLogChannelId);
     if (!logs) return;
+        
+        // Calculate how long they were in the server
         const memberCount = member.guild.memberCount;
         const joinDuration = member.joinedTimestamp ? Math.floor((Date.now() - member.joinedTimestamp) / (1000 * 60 * 60 * 24)) : "Unknown";
         const roles = member.roles.cache

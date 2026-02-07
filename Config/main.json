@@ -1,8 +1,7 @@
 {
-	"unknownCommandMessage": ":x: That command doesn't exist!",
-	"OwnerID": "",
-    "Version": "4.0.0",
-	"ServerInvite": "SERVER_INVITE_HERE",
 	"serverID": "SERVER_ID_HERE",
-	"AppealLink": "BAN_APPEAL_LINK_HERE"
+	"ServerInvite": "https://discord.gg/YOUR_INVITE_CODE",
+	"AppealLink": "WEBSITE_FORM_LINK_FOR_BAN_APPEALS",
+	"githublink": "https://github.com/oa1u/Sentinel",
+	"Version": "5.0.0"
 }

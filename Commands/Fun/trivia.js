@@ -1,9 +1,10 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 
+// Using number emojis for multiple choice answers—makes it easy to pick!
 const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣'];
 
-// Simple HTML entity decoder without DOM
+// The API sometimes sends weird HTML entities, so we have to decode them.
 function htmlDecode(str) {
   const entities = {
     '&quot;': '"',
@@ -25,6 +26,15 @@ module.exports = {
     
     try {
       const response = await fetch('https://opentdb.com/api.php?amount=1&type=multiple');
+      
+      if (!response.ok) {
+        const errorEmbed = new EmbedBuilder()
+          .setColor(0xF04747)
+          .setTitle('❌ Error')
+          .setDescription('Trivia service is currently unavailable. Please try again later!');
+        return interaction.editReply({ embeds: [errorEmbed] });
+      }
+      
       const data = await response.json();
       
       if (!data.results || data.results.length === 0) {
@@ -37,6 +47,7 @@ module.exports = {
       
       const question = data.results[0];
       const correctAnswer = htmlDecode(question.correct_answer);
+      // Shuffle the answers so the right one isn't always at the top.
       const allAnswers = [
         correctAnswer,
         ...question.incorrect_answers.map(ans => htmlDecode(ans))
@@ -63,12 +74,12 @@ module.exports = {
       
       const triviaMessage = await interaction.editReply({ embeds: [em] }).then(response => response || interaction.message);
       
-      // Add reaction options
+      // Add number emoji reactions so users can vote for their answer.
       for (let i = 0; i < 4; i++) {
         await triviaMessage.react(emojis[i]);
       }
       
-      // Create collector
+      // Wait for the user to pick their answer by reacting.
       const filter = (reaction, user) => {
         return emojis.includes(reaction.emoji.name) && user.id === interaction.user.id;
       };

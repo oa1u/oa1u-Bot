@@ -1,6 +1,4 @@
-const moment = require("moment");
-const DatabaseManager = require('../../Functions/DatabaseManager');
-require("moment-duration-format");
+const DatabaseManager = require('../../Functions/MySQLDatabaseManager');
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
 const { moderatorRoleId } = require("../../Config/constants/roles.json");
@@ -27,16 +25,17 @@ module.exports = {
     const warnsDB = DatabaseManager.getWarnsDB();
     const userOption = interaction.options.getUser('user');
 
-    // Use the provided user id directly so it works even if the user is not in the guild
+    // Use the user ID given, or default to the person running the command
     const targetUserId = userOption ? userOption.id : interaction.user.id;
     const viewingSelf = targetUserId === interaction.user.id;
 
-    warnsDB.ensure(targetUserId, { points: 0, warns: {} });
+    await warnsDB.ensure(targetUserId, { points: 0, warns: {} });
 
     const targetUserObj = await interaction.client.users.fetch(targetUserId).catch(() => null);
     const userLabel = targetUserObj ? `${targetUserObj.tag} (${targetUserId})` : `${targetUserId}`;
 
-    const warns = warnsDB.get(targetUserId)?.warns || {};
+    const userData = await warnsDB.get(targetUserId);
+    const warns = userData?.warns || {};
     const warnKeys = Object.keys(warns);
     const noneMsg = viewingSelf ? 'You have not been warned before' : 'User has not been warned before';
     const list = warnKeys.length ? warnKeys.map((id, idx) => `${idx + 1}. ${id}`).join('\n') : noneMsg;

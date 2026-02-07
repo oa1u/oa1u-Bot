@@ -3,6 +3,8 @@ const { MessageFlags, PermissionFlagsBits } = require('discord.js');
 const { sendErrorReply, sendSuccessReply, createModerationEmbed } = require("../../Functions/EmbedBuilders");
 const { logModerationAction } = require("../../Functions/ModerationHelper");
 
+// Lets you delete a bunch of messages at once
+// Can't delete messages older than 2 weeks (Discord rule)
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('clear')
@@ -26,12 +28,12 @@ module.exports = {
     ),
   category: "moderation",
   async execute(interaction) {
-      // Acknowledge early to avoid interaction timeout when bulk deleting
+      // Respond right away so Discord doesn't time out while we delete
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
       }
 
-    // Check permissions
+    // Only let people with Manage Messages permission use this
     if (!interaction.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
       await sendErrorReply(
         interaction,
@@ -46,15 +48,15 @@ module.exports = {
     const targetUser = interaction.options.getUser('user');
 
     try {
-      // Fetch messages
+      // Get the messages from the channel
       const messages = await interaction.channel.messages.fetch({ limit: amount });
       
-      // Filter by user if specified
+      // If a user is picked, only delete their messages
       let toDelete = targetUser 
         ? messages.filter(msg => msg.author.id === targetUser.id)
         : messages;
 
-      // Filter out messages older than 2 weeks (Discord limitation for bulk delete)
+      // Don't try to delete messages that are too old
       const twoWeeksAgo = Date.now() - (14 * 24 * 60 * 60 * 1000);
       toDelete = toDelete.filter(msg => msg.createdTimestamp > twoWeeksAgo);
 

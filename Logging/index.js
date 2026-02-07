@@ -1,3 +1,7 @@
+// Server logging system
+// Logs all server events (channels, roles, members, emojis, invites) to a log channel
+// Makes it easy to track changes and audit server activity
+
 module.exports = (client) => {
     const channelCreate = require("./ChannelCreate");
     const channelDelete = require("./ChannelDelete");

@@ -1,0 +1,44 @@
+{
+  "rules": [
+    {
+      "number": 1,
+      "title": "Be Respectful",
+      "description": "Treat all members with respect. No harassment, hate speech, discrimination, or bullying of any kind."
+    },
+    {
+      "number": 2,
+      "title": "No Spam",
+      "description": "Do not spam messages, links, or emojis. Keep conversations meaningful and on-topic."
+    },
+    {
+      "number": 3,
+      "title": "No NSFW Content",
+      "description": "Do not share adult, explicit, or inappropriate content in channels unless designated for such content."
+    },
+    {
+      "number": 4,
+      "title": "No Advertising",
+      "description": "Do not advertise other servers, products, or services without explicit permission from moderators."
+    },
+    {
+      "number": 5,
+      "title": "No Exploits or Cheating",
+      "description": "Do not use exploits, hacks, or cheats. Report bugs to staff instead of exploiting them."
+    },
+    {
+      "number": 6,
+      "title": "Follow Channel Topics",
+      "description": "Keep messages on-topic for the channel. Use appropriate channels for different discussions."
+    },
+    {
+      "number": 7,
+      "title": "No Impersonation",
+      "description": "Do not impersonate staff members or other users. Be honest about your identity."
+    },
+    {
+      "number": 8,
+      "title": "Listen to Staff",
+      "description": "Follow instructions from moderators and administrators. If you disagree with a decision, appeal respectfully."
+    }
+  ]
+}

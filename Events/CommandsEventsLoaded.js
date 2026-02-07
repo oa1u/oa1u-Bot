@@ -1,4 +1,8 @@
-// ANSI Color codes
+// Commands and Events Loaded Logger
+// This logger announces when all commands and events are loaded, so you know the bot is ready.
+// It prints a friendly startup message in the console, using colors to make it stand out.
+
+// These are the ANSI color codes we use to make the console output look cool and easy to read.
 const colors = {
     reset: '\x1b[0m',
     bright: '\x1b[1m',
@@ -22,7 +26,7 @@ module.exports = {
         const events = client.eventNames().length;
         const categories = new Set();
         
-        // Count command categories
+        // Let's count how many command categories there are, so we can show it in the startup log.
         client.slashCommands.forEach(cmd => {
             if (cmd.category) categories.add(cmd.category);
         });

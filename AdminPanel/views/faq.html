@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Bot Admin Panel</title>
+    <title>Frequently Asked Questions</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+   
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">❓ FAQ</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link" id="adminLink">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="headerUsername">Loading...</span>
+                        <span class="role-badge" id="headerRole">user</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">user</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #23272a 0%, #181818 100%);
+        }
+        .faq-outer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: transparent;
+        }
+        .faq-container {
+            display: flex;
+            gap: 32px;
+            background: rgba(34, 39, 42, 0.95);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+            padding: 44px 32px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        .faq-sidebar {
+            width: 320px;
+            background: rgba(36, 40, 44, 0.98);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 0;
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+        }
+        .faq-sidebar h2 {
+            font-size: 18px;
+            font-weight: 700;
+            padding: 20px;
+            margin: 0;
+            border-bottom: 1px solid #36393f;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+        .faq-tab-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .faq-tab-list li {
+            border-bottom: 1px solid #36393f;
+        }
+        .faq-tab-list button {
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            padding: 22px 28px;
+            font-size: 18px;
+            cursor: pointer;
+            color: #b9bbbe;
+            transition: background 0.2s, font-weight 0.2s, color 0.2s;
+            border-radius: 0;
+        }
+        .faq-tab-list button.active {
+            background: #2c2f33;
+            font-weight: bold;
+            color: #fff;
+        }
+        .faq-content {
+            flex: 1;
+            background: rgba(36, 40, 44, 0.98);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 48px 40px;
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .faq-category-box {
+            background: rgba(44, 47, 51, 0.98);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 28px 24px;
+            margin-bottom: 32px;
+            border-left: 4px solid #22c55e;
+        }
+        .faq-category-box h4 {
+            margin: 0 0 12px 0;
+            font-size: 22px;
+            color: #fff;
+            font-weight: 600;
+        }
+        .faq-category-box p {
+            color: #b9bbbe;
+            font-size: 17px;
+            margin: 0 0 10px 0;
+        }
+        .faq-category-box .example {
+            color: #22c55e;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 8px;
+        }
+        @media (max-width: 900px) {
+            .faq-outer {
+                padding: 24px 0;
+            }
+            .faq-container {
+                flex-direction: column;
+                gap: 16px;
+                padding: 18px 8px;
+                max-width: 98vw;
+            }
+            .faq-sidebar {
+                width: 100%;
+                min-height: unset;
+            }
+            .faq-content {
+                padding: 24px 12px;
+                min-height: unset;
+            }
+        }
+    </style>
+
+    <div class="faq-outer">
+        <div class="faq-container">
+            <div class="faq-sidebar">
+                <h2>❓ Frequently Asked Questions ❓</h2>
+                <ul class="faq-tab-list" id="faq-tab-list">
+                    <li><button class="active" onclick="showFaqCategory(0)">👤 My account</button></li>
+                    <li><button onclick="showFaqCategory(1)">🔒 Security</button></li>
+                    <li><button onclick="showFaqCategory(2)">🤖 Bot features</button></li>
+                    <li><button onclick="showFaqCategory(3)">🚀 Getting started</button></li>
+                    <li><button onclick="showFaqCategory(4)">📞 Support & Contact</button></li>
+                    <li><button onclick="showFaqCategory(5)">🛠️ Troubleshooting</button></li>
+                </ul>
+            </div>
+            <div class="faq-content" id="faq-content">
+            </div>
+        </div>
+    </div>
+    <script>
+        const faqCategories = [
+            {
+                name: 'My account',
+                faqs: [
+                    {
+                        question: 'How do I change my password?',
+                        answer: 'Go to your account settings and select "Change Password". Follow the instructions to set a new password.',
+                        example: 'Example: Use a strong password with letters, numbers, and symbols.'
+                    },
+                    {
+                        question: 'How do I update my profile information?',
+                        answer: 'Currently a work in progress. Will be updated in a future release.',
+                        example: 'Example: Keep your contact information up to date.'
+                    },
+                    {
+                        question: 'How do I view my account activity?',
+                        answer: 'Account activity is available in your profile under the "Activity" tab. Please note that this feature is currently being developed and will be available in a future update.',
+                        example: 'Example: Review your recent logins for security.'
+                    }
+                ]
+            },
+            {
+                name: 'Security',
+                faqs: [
+                    {
+                        question: 'Is my data secure and private?',
+                        answer: 'Your data is protected with industry-standard security practices. Only authorized users can access sensitive information.',
+                        example: 'Example: All passwords are encrypted and user activity is logged securely.'
+                    },
+                    {
+                        question: 'How do I enable two-factor authentication?',
+                        answer: 'Go to your account security settings and follow the steps to enable two-factor authentication (2FA). Please note that 2FA is currently being developed and will be available in a future update.',
+                        example: 'Example: Use an authenticator app for 2FA.'
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    }
+                ]
+            },
+            {
+                name: 'Bot features',
+                faqs: [
+                    {
+                        question: 'What commands does the bot support?',
+                        answer: 'The bot supports moderation, fun, utility, and management commands. See the documentation or /help for a full list.',
+                        example: 'Example: Use /ban, /kick, /trivia, /poll, etc.'
+                    },
+                    {
+                        question: 'How do I report bugs or request features?',
+                        answer: 'On the github page',
+                        example: 'Example: Attach screenshots and describe the steps to reproduce the bug.'
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    }
+                ]
+            },
+            {
+                name: 'Getting started',
+                faqs: [
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    }
+                ]
+            },
+            {
+                name: 'Support & Contact',
+                faqs: [
+                    {
+                        question: 'Is there a community forum?',
+                        answer: 'Currently there isnt a community forum or discord server. We recommend checking the GitHub repository for updates on community support channels.',
+                        example: 'Get help from other users and staff.'
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    }
+                ]
+            },
+            {
+                name: 'Troubleshooting',
+                faqs: [
+                    {
+                        question: 'Why isn’t the bot responding?',
+                        answer: 'Check if the bot is online and has the correct permissions. Try restarting the bot or re-inviting it.',
+                        example: 'Make sure the bot has access to the channel.'
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    },
+                    {
+                        question: '',
+                        answer: '',
+                        example: ''
+                    }
+                ]
+            }
+        ];
+
+        function showFaqCategory(index) {
+            const buttons = document.querySelectorAll('.faq-tab-list button');
+            buttons.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+            const category = faqCategories[index];
+            let html = '';
+            category.faqs.forEach(faq => {
+                html += `<div class="faq-category-box">
+                    <h4>${faq.question}</h4>
+                    <p>${faq.answer}</p>
+                    <div class="example">${faq.example}</div>
+                </div>`;
+            });
+            document.getElementById('faq-content').innerHTML = html;
+        }
+
+        // Show first category by default
+        window.addEventListener('DOMContentLoaded', () => {
+            showFaqCategory(0);
+        });
+    </script>
+
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/notifications.js" defer></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/faq.js" defer></script>
+    <script src="/public/version.js"></script>
+</body>
+</html>

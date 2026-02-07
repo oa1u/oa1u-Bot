@@ -1,8 +1,10 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const { ticketCategoryId, ticketLogChannelId } = require("../Config/constants/channel.json");
 const { supportTeamRoleId } = require("../Config/constants/roles.json");
-const DatabaseManager = require('../Functions/DatabaseManager');
+const MySQLDatabaseManager = require('../Functions/MySQLDatabaseManager');
 
+// Ticket reaction handler
+// Handles ticket panel reactions. Lets users and staff close tickets with a reaction.
 module.exports = {
     name: "messageReactionAdd",
     runOnce: false,
@@ -12,13 +14,13 @@ module.exports = {
         const reaction = args[0];
         const user = args[1];
         
-        // Ignore bot reactions
+        // Ignore bot reactions.
         if (user.bot) return;
         
-        // Check if reaction is ❌
+        // Only care about the close emoji.
         if (reaction.emoji.name !== '❌') return;
         
-        // Fetch partial messages if needed
+        // Make sure we have the full message data if it's partial.
         if (reaction.partial) {
             try {
                 await reaction.fetch();
@@ -30,35 +32,34 @@ module.exports = {
         
         const channel = reaction.message.channel;
         
-        // Check if this is a ticket channel
+        // Is this a ticket channel? Check the parent category.
         if (channel.parentId !== ticketCategoryId) return;
         
-        // Check if channel name contains 'ticket-' (accounts for emoji prefix)
+        // Double check the channel name contains 'ticket-'.
         if (!channel.name.includes('-ticket-')) return;
         
-        // Get the member who reacted
+        // Get the member who reacted.
         const member = await channel.guild.members.fetch(user.id).catch(() => null);
         if (!member) return;
         
-        // Extract ticket owner from channel name (emoji-ticket-username)
+        // Figure out who owns this ticket from the channel name.
         const ticketOwnerName = channel.name.split('-ticket-')[1];
         
-        // Check if user has permission to close (ticket owner or support role)
+        // Only ticket owner or staff can close tickets.
         const isTicketOwner = user.username.toLowerCase() === ticketOwnerName.toLowerCase();
         const hasSupport = member.roles.cache.has(supportTeamRoleId);
         const isAdmin = member.permissions.has('Administrator');
         
         if (!isTicketOwner && !hasSupport && !isAdmin) {
-            // Remove reaction if no permission
+            // Remove their reaction if they don't have permission.
             await reaction.users.remove(user.id).catch((err) => {
                 console.error(`[Ticket] Couldn't remove reaction: ${err.message}`);
             });
             return;
         }
         
-        // Get ticket data from database
-        const ticketsDB = DatabaseManager.getDatabase('tickets');
-        const ticketData = ticketsDB.get(channel.id) || {};
+        // Grab the ticket info from database
+        const ticketData = await MySQLDatabaseManager.getTicket(channel.id) || {};
         
         // Create transcript
         let transcript = `📋 Ticket Transcript - ${channel.name}\n`;
@@ -155,8 +156,7 @@ module.exports = {
         }
         
         // Update database
-        ticketsDB.set(channel.id, {
-            ...ticketData,
+        await MySQLDatabaseManager.updateTicket(channel.id, {
             status: 'closed',
             closedAt: Date.now(),
             closedBy: user.id,
@@ -182,7 +182,7 @@ module.exports = {
                 console.error(`[TicketReaction] Failed to delete ticket channel: ${err.message}`);
             });
             // Clean up database after deletion
-            ticketsDB.delete(channelId);
+            await MySQLDatabaseManager.deleteTicket(channelId);
         }, 5000);
     }
 };

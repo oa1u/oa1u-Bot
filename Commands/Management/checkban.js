@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord.js');
-const DatabaseManager = require('../../Functions/DatabaseManager');
+const DatabaseManager = require('../../Functions/MySQLDatabaseManager');
 const { moderatorRoleId, administratorRoleId } = require("../../Config/constants/roles.json");
 
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
     const moderator = interaction.member;
     const caseID = interaction.options.getString('caseid');
 
-    // Permission check
+    // Make sure the user running this command is a mod or admin.
     if (!moderator.roles.cache.has(moderatorRoleId) && !moderator.roles.cache.has(administratorRoleId)) {
       const noPermEmbed = new EmbedBuilder()
         .setColor(0x5865F2)
@@ -28,9 +28,9 @@ module.exports = {
     }
 
     const warnsDB = DatabaseManager.getWarnsDB();
-    const allData = warnsDB.all();
+    const allData = await warnsDB.all();
 
-    // Search through all users for the case ID
+    // Search every user's warnings for the given case ID.
     let foundCase = null;
     let foundUserId = null;
 
@@ -52,7 +52,7 @@ module.exports = {
       return interaction.reply({ embeds: [notFoundEmbed], flags: MessageFlags.Ephemeral });
     }
 
-    // Fetch user and moderator information
+    // Try to fetch user and moderator details from Discord for more info.
     let targetUser;
     let moderatorUser;
     
@@ -63,12 +63,12 @@ module.exports = {
       console.error('Error fetching users:', err);
     }
 
-    // Check if this is a ban or warn
+    // Figure out if this is actually a ban or just a warning.
     const isBan = foundCase.reason && foundCase.reason.includes('(banned)');
     const actionType = isBan ? '🔨 Ban' : '⚠️ Warning';
     const embedColor = isBan ? 0xF04747 : 0xFAA61A;
 
-    // Build the embed
+    // Put together all the info to show in Discord.
     const caseEmbed = new EmbedBuilder()
       .setTitle(`${actionType} - Case ${caseID}`)
       .setColor(embedColor)
@@ -101,12 +101,12 @@ module.exports = {
       .setFooter({ text: `Case ID: ${caseID}` })
       .setTimestamp();
 
-    // Add user thumbnail if available
+    // Show the user's avatar if we have it—makes the embed look nicer.
     if (targetUser) {
       caseEmbed.setThumbnail(targetUser.displayAvatarURL({ size: 128 }));
     }
 
-    // Check current ban status
+    // Check if the user is still banned at this moment.
     if (isBan) {
       try {
         const banInfo = await interaction.guild.bans.fetch(foundUserId).catch(() => null);
@@ -116,7 +116,7 @@ module.exports = {
           inline: true
         });
       } catch (err) {
-        // User not found in bans
+        // If the user isn't found in the bans list, let them know.
         caseEmbed.addFields({
           name: '🔍 Current Status',
           value: '🟢 No Longer Banned',

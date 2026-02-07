@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log invite creation events
 module.exports = (client) => {
 	client.on("inviteCreate", async(invite) => {
     const logs = client.channels.cache.get(serverLogChannelId);

@@ -2,6 +2,8 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { administratorRoleId } = require('../../Config/constants/roles.json');
 const giveawayHandler = require('../../Events/Giveaway');
 
+// This command handles giveaways—start, extend, reroll, and more!
+// People join giveaways by reacting—easy and fun.
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('giveaway')
@@ -29,7 +31,7 @@ module.exports = {
         .setDescription('Extend an active giveaway')
         .addStringOption(option =>
           option.setName('message-id')
-            .setDescription('The message ID of the giveaway')
+            .setDescription('The Case ID of the giveaway (e.g., GIVE-kX7mP9qL2n)')
             .setRequired(true)
         )
         .addStringOption(option =>
@@ -44,13 +46,13 @@ module.exports = {
         .setDescription('Pick a new winner from an ended giveaway')
         .addStringOption(option =>
           option.setName('message-id')
-            .setDescription('The message ID of the ended giveaway')
+            .setDescription('The Case ID of the ended giveaway (e.g., GIVE-kX7mP9qL2n)')
             .setRequired(true)
         )
     ),
   category: 'management',
   async execute(interaction) {
-    // Check if user has admin role
+    // Only admins are allowed to use this command.
     if (!interaction.member.roles.cache.has(administratorRoleId)) {
       const embed = {
         color: 16711680,
@@ -67,6 +69,7 @@ module.exports = {
     
     const subcommand = interaction.options.getSubcommand();
     
+    // Figure out what the user wants to do with the giveaway.
     if (subcommand === 'start') {
       await giveawayHandler.handleGiveaway(interaction, interaction.client);
     } else if (subcommand === 'extend') {

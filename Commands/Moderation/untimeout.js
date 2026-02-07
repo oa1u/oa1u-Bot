@@ -4,8 +4,11 @@ require("moment-duration-format");
 const { generateCaseId } = require("../../Events/caseId");
 const { sendErrorReply, sendSuccessReply, createModerationEmbed } = require("../../Functions/EmbedBuilders");
 const { canModerateMember, addCase, sendModerationDM, logModerationAction } = require("../../Functions/ModerationHelper");
-const DatabaseManager = require('../../Functions/DatabaseManager');
+const DatabaseManager = require('../../Functions/MySQLDatabaseManager');
+const AdminPanelHelper = require('../../Functions/AdminPanelHelper');
 
+// Lets you end a user's timeout early
+// Also updates the admin panel
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('untimeout')
@@ -27,7 +30,7 @@ module.exports = {
     ),
   category: 'moderation',
   async execute(interaction) {
-      // Acknowledge early to prevent interaction expiry
+      // Respond right away so Discord doesn't time out while we process
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
       }
@@ -36,7 +39,7 @@ module.exports = {
     const caseId = interaction.options.getString('caseid');
     const reason = interaction.options.getString('reason') || 'No reason provided';
 
-    // Must provide either user or case ID
+    // You have to give either a user or a case ID
     if (!targetUser && !caseId) {
       return sendErrorReply(
         interaction,
@@ -45,14 +48,15 @@ module.exports = {
       );
     }
 
-    // If case ID provided, look up the user from database
+    // If a case ID is given, try to find the user in the database
     if (caseId) {
       const warnsDB = DatabaseManager.getWarnsDB();
       let foundUserId = null;
       let foundCase = null;
 
-      // Search all users for the case ID
-      for (const [userId, userData] of Object.entries(warnsDB.all())) {
+      // Look through all users to find the right case ID
+      const allWarns = await warnsDB.all();
+      for (const [userId, userData] of Object.entries(allWarns)) {
         if (userData.warns && userData.warns[caseId]) {
           foundUserId = userId;
           foundCase = userData.warns[caseId];
@@ -138,6 +142,7 @@ module.exports = {
       .setColor(0x43B581)
       .setDescription(`Your timeout in **${interaction.guild.name}** has been removed\n\n━━━━━━━━━━━━━━━━━━━━━━`)
       .addFields(
+        { name: '📋 Summary', value: `\`\`\`\nUser: ${targetUser.tag}\nModerator: ${interaction.user.tag}\nCase: ${newCaseID}\n\`\`\``, inline: false },
         { name: '📝 Reason', value: `\`\`\`${reason}\`\`\``, inline: false },
         { name: '🔑 Case ID', value: `\`${newCaseID}\``, inline: true },
         { name: '👮 Moderator', value: `${interaction.user}`, inline: true }
@@ -157,11 +162,25 @@ module.exports = {
     // Add to database
     addCase(targetUser.id, newCaseID, {
       moderator: interaction.user.id,
+      moderatorTag: interaction.user.username,
+      userTag: targetUser.username,
       reason: `(untimeout) - ${reason}`,
       date: moment(Date.now()).format('LL'),
       type: 'UNTIMEOUT',
       originalCase: caseId || null
     });
+
+    // Remove from timeouts tracking table
+    try {
+      await AdminPanelHelper.clearTimeout(targetUser.id, {
+        caseId: newCaseID,
+        clearedBy: interaction.user.id,
+        clearedAt: Date.now(),
+        reason: reason
+      });
+    } catch (err) {
+      console.error('[untimeout] Failed to remove timeout from database:', err.message);
+    }
 
     // Remove the timeout
     try {

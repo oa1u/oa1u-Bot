@@ -1,12 +1,23 @@
 const { EmbedBuilder } = require('discord.js');
+const MySQLDatabaseManager = require('../Functions/MySQLDatabaseManager');
 
+// When a member leaves, send a friendly goodbye message and log their departure in the database.
+// Also logs their departure to the database
 module.exports = {
   name: 'guildMemberRemove',
   async execute(member) {
     try {
+      // Log that this member left the server, so we can track activity.
+      await MySQLDatabaseManager.logMemberActivity(
+        member.id,
+        member.user.tag,
+        'leave',
+        member.guild.id
+      );
+      
       const { leaveChannelId } = require('../Config/constants/channel.json');
       
-      // Skip if leave channel not configured
+      // If there's no leave channel set up, just warn and skip.
       if (!leaveChannelId || leaveChannelId === '') {
         console.warn('[Leave] Channel not configured');
         return;
@@ -18,7 +29,7 @@ module.exports = {
         return;
       }
       
-      // Calculate member age
+      // Figure out how long the member was in the server.
       const joinedTimestamp = member.joinedTimestamp;
       const memberAge = Date.now() - joinedTimestamp;
       const days = Math.floor(memberAge / (1000 * 60 * 60 * 24));
@@ -28,7 +39,7 @@ module.exports = {
       if (days > 0) ageString += `${days}d `;
       ageString += `${hours}h`;
       
-      // Create leave embed
+      // Build a nice-looking embed to say goodbye.
       const leaveEmbed = new EmbedBuilder()
         .setColor(0xFF6B6B)
         .setTitle('👋 Member Left')
@@ -44,7 +55,7 @@ module.exports = {
         .setFooter({ text: `User left • ID: ${member.id}` })
         .setTimestamp();
       
-      // Add roles if member had any (excluding @everyone)
+      // If the member had any roles (besides @everyone), list them in the embed.
       if (member.roles.cache.size > 1) {
         const roleList = member.roles.cache
           .filter(role => !role.isEveryone)
@@ -63,8 +74,7 @@ module.exports = {
       await channel.send({ embeds: [leaveEmbed] }).catch((err) => {
         console.error(`[Leave] Couldn't send message: ${err.message}`);
       });
-      
-      console.log(`[Leave] Message sent for ${member.user.tag}`);
+
     } catch (error) {
       console.error(`[Leave] Error: ${error.message}`);
     }

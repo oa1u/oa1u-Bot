@@ -1,8 +1,13 @@
 const crypto = require('crypto');
 
+// This function creates unique case IDs for moderation actions, like warnings or bans.
+// It uses crypto to make sure the IDs are truly random and secure.
+// Generate unique case IDs for moderation actions
+// Uses crypto for secure random generation
+
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-// Generate random string with crypto
+// Here's how we generate a random string using crypto.
 function makeid(length = 10, charset = CHARSET) {
   if (!length || length < 1) return '';
   const bytes = crypto.randomBytes(length);
@@ -13,7 +18,7 @@ function makeid(length = 10, charset = CHARSET) {
   return result.join('');
 }
 
-// Generate unique case ID (e.g., WARN-XXXXXXXX)
+// This builds a unique case ID, like WARN-XXXXXXXX, for tracking moderation cases.
 function generateCaseId(caseType = 'CASE', randomLength = 8) {
   const typePrefix = (caseType || 'CASE').toUpperCase().slice(0, 10);
   const randomPart = makeid(randomLength);

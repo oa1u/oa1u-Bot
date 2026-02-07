@@ -1,89 +1,68 @@
 const { ChannelType, PermissionFlagsBits } = require("discord.js");
-const jointocreatemap = new Map();
+const MySQLDatabaseManager = require("../Functions/MySQLDatabaseManager");
 const { joinToCreateChannelId, joinToCreateCategoryId } = require("../Config/constants/channel.json");
 const { serverID } = require("../Config/main.json");
 
-let cleanupStarted = false;
-
+// Join-to-Create voice channel system
+// This system lets users join a lobby voice channel and automatically get their own private temp channel.
+// When they're done, the temp channel is deleted if it's empty.
 module.exports = {
   name: "voiceStateUpdate",
   runOnce: false,
   call: async (client, args) => {
     const [oldState, newState] = args;
 
-    // Start cleanup interval once
-    if (!cleanupStarted) {
-      cleanupStarted = true;
-      setInterval(() => {
-        try {
-          const guild = client.guilds.cache.get(serverID);
-          if (!guild) return;
-          const channels = guild.channels.cache.map(ch => ch.id);
-          for (let i = 0; i < channels.length; i++) {
-            const key = `tempvoicechannel_${guild.id}_${channels[i]}`;
-            if (jointocreatemap.get(key)) {
-              const vc = guild.channels.cache.get(jointocreatemap.get(key));
-              if (vc && vc.members.size < 1) {
-                jointocreatemap.delete(key);
-                vc.delete().catch((err) => {
-                  console.error(`[JTC] Couldn't delete temp channel: ${err.message}`);
-                });
-              }
-            }
-          }
-        } catch (err) {
-          console.error('[JTC] Cleanup error:', err);
-        }
-      }, 10000);
-    }
-
-    // Ignore bot-less states
+    // If both states are missing, ignore (probably a bot or weird event).
     if (!oldState && !newState) return;
 
     const oldChannelId = oldState?.channelId;
     const newChannelId = newState?.channelId;
 
-    // Join event
+    // If the user just joined a channel, check if it's the JTC lobby and create their temp channel.
     if (!oldChannelId && newChannelId) {
       if (newChannelId !== joinToCreateChannelId) return;
       await createTempChannel(newState);
       return;
     }
 
-    // Leave event
+    // If the user just left a channel, check if it was a temp JTC channel and clean up if empty.
     if (oldChannelId && !newChannelId) {
-      const key = `tempvoicechannel_${oldState.guild.id}_${oldChannelId}`;
-      if (jointocreatemap.get(key)) {
-        const vc = oldState.guild.channels.cache.get(jointocreatemap.get(key));
+      const jtcData = await MySQLDatabaseManager.getJTCChannel(oldChannelId);
+      if (jtcData) {
+        const vc = oldState.guild.channels.cache.get(jtcData.channel_id);
         if (!vc) {
-          jointocreatemap.delete(key);
+          await MySQLDatabaseManager.deleteJTCChannel(oldChannelId);
           return;
         }
         if (vc.members.size < 1) {
-          jointocreatemap.delete(key);
-          vc.delete().catch(() => {});
+          await MySQLDatabaseManager.deleteJTCChannel(oldChannelId);
+          vc.delete().catch(err => {
+            console.error(`[JoinToCreate] Failed to delete empty voice channel: ${err.message}`);
+          });
         }
       }
       return;
     }
 
-    // Move event
+    // If the user moved between channels, check if they joined the JTC lobby and create a temp channel.
     if (oldChannelId && newChannelId && oldChannelId !== newChannelId) {
       if (newChannelId === joinToCreateChannelId) {
-        await createTempChannel(oldState);
+        await createTempChannel(newState);
       }
 
-      // Cleanup old temp channel if empty
-      const key = `tempvoicechannel_${oldState.guild.id}_${oldChannelId}`;
-      if (jointocreatemap.get(key)) {
-        const vc = oldState.guild.channels.cache.get(jointocreatemap.get(key));
+      // If they left a temp channel, clean it up if it's empty.
+      const jtcData = await MySQLDatabaseManager.getJTCChannel(oldChannelId);
+      if (jtcData) {
+        const vc = oldState.guild.channels.cache.get(jtcData.channel_id);
         if (!vc) {
-          jointocreatemap.delete(key);
+          await MySQLDatabaseManager.deleteJTCChannel(oldChannelId);
           return;
         }
         if (vc.members.size < 1) {
-          jointocreatemap.delete(key);
-          vc.delete().catch(() => {});
+          await MySQLDatabaseManager.deleteJTCChannel(oldChannelId);
+          vc.delete().catch(err => {
+            console.error(`[JoinToCreate] Failed to delete empty voice channel: ${err.message}`);
+          });
         }
       }
     }
@@ -117,7 +96,9 @@ async function createTempChannel(userState) {
     });
 
     await userState.setChannel(vc).catch(err => console.error('[JoinToCreate] Error moving user into temp channel:', err.message));
-    jointocreatemap.set(`tempvoicechannel_${vc.guild.id}_${vc.id}`, vc.id);
+    
+    // Store channel in database
+    await MySQLDatabaseManager.createJTCChannel(vc.id, userState.id, guild.id, vc.name);
   } catch (err) {
     console.error('[JoinToCreate] Error creating temp channel:', err.message);
   }

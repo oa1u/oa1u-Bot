@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderator - Bot Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/moderator.js" defer></script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">🎛️ Moderator</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link active">Moderator</a>
+                <a href="/admin" class="nav-link" id="adminLink">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerNavLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="userDisplay">Loading...</span>
+                        <span class="role-badge" id="roleBadge">moderator</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">moderator</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="tabs" id="moderatorTabs" style="margin-bottom:2.5rem;">
+            <button class="tab active" data-tab="overview" style="--tab-color:#5b7fff;"><span class="tab-icon">📊</span> <span>Overview</span></button>
+            <button class="tab" data-tab="tickets" style="--tab-color:#ffd45b;"><span class="tab-icon">🎫</span> <span>Tickets</span></button>
+            <button class="tab" data-tab="bans" style="--tab-color:#f44336;"><span class="tab-icon">🚫</span> <span>Ban/Timeout List</span></button>
+            <button class="tab" data-tab="warnings" style="--tab-color:#ff9800;"><span class="tab-icon">⚠️</span> <span>Warnings</span></button>
+            <button class="tab" data-tab="members" style="--tab-color:#5bffb8;"><span class="tab-icon">👥</span> <span>Members</span></button>
+        </div>
+        <style>
+        .tabs {
+            display: flex;
+            gap: 2.5rem;
+            border-bottom: 2px solid var(--border-color);
+            margin: 2.5rem 0 2rem 0;
+            padding-left: 0.5rem;
+            align-items: center;
+        }
+        .tab {
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem 0.5rem 1.5rem;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+        }
+        .tab.active {
+            color: var(--tab-color, #5b7fff);
+            background: var(--bg-card);
+            box-shadow: 0 2px 8px rgba(91,127,255,0.08);
+            border-bottom: 2px solid var(--tab-color, #5b7fff);
+            z-index: 2;
+        }
+        .tab:not(.active):hover {
+            color: var(--tab-color, #5b7fff);
+            background: var(--bg-card-hover);
+        }
+        .tab .tab-icon {
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        </style>
+        <script>
+        // Enhanced tab system for moderator panel
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('#moderatorTabs .tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const tabName = tab.getAttribute('data-tab');
+                    tabContents.forEach(tc => {
+                        if (tc.id === tabName) {
+                            tc.classList.add('active');
+                            tc.style.display = '';
+                        } else {
+                            tc.classList.remove('active');
+                            tc.style.display = 'none';
+                        }
+                    });
+                });
+            });
+            // Hide all but the first tab content on load
+            tabContents.forEach((tc, idx) => {
+                if (idx !== 0) tc.style.display = 'none';
+            });
+        });
+        </script>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📊</span>
+                    <span>Moderation Overview</span>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon red">⚠️</div>
+                        <div class="stat-value" id="todayWarns">-</div>
+                        <div class="stat-label">Warns Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">🚫</div>
+                        <div class="stat-value" id="todayBans">-</div>
+                        <div class="stat-label">Bans Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue">⏱️</div>
+                        <div class="stat-value" id="activeTimeouts">-</div>
+                        <div class="stat-label">Active Timeouts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon yellow">🎫</div>
+                        <div class="stat-value" id="openTickets">-</div>
+                        <div class="stat-label">Open Tickets</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📋</span>
+                    <span>Recent Moderation Actions</span>
+                </div>
+                <div class="table-container" id="recentActionsContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>User</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentActionsTable">
+                            <tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Tickets Tab -->
+        <div id="tickets" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🎫</span>
+                    <span>Support Tickets</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Filter by Status</label>
+                    <select id="ticketFilter" class="form-input" onchange="filterTickets()">
+                        <option value="all">All Tickets</option>
+                        <option value="open">Open</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+                <div class="table-container" id="ticketsContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ticket ID</th>
+                                <th>User</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ticketsTable">
+                            <tr><td colspan="5" class="text-center text-muted">Loading tickets...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ban/Timeout List Tab -->
+        <div id="bans" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🚫</span>
+                    <span>Banned Users</span>
+                </div>
+                <div class="table-container" id="bannedUsersContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Ban Reason</th>
+                                <th>Banned By</th>
+                                <th>Banned On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bannedUsersTable">
+                            <tr><td colspan="6" class="text-center text-muted">Loading banned users...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">⏱️</span>
+                    <span>Active Timeouts</span>
+                </div>
+                <div class="table-container" id="timeoutsContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Timeout Reason</th>
+                                <th>Issued By</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timeoutsTable">
+                            <tr><td colspan="6" class="text-center text-muted">Loading active timeouts...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Warnings Tab -->
+        <div id="warnings" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">📋</span>
+                    <span>History Lookup</span>
+                </div
+                <div class="form-group">
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" class="form-input" id="actionSearchInput" placeholder="Search by username, user ID, case ID, or action type..." onkeyup="searchActions()">
+                        <button class="btn btn-primary" type="button" onclick="searchActions()">Search</button>
+                    </div>
+                </div>
+                <div class="table-container" id="actionsContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Action Type</th>
+                                <th>Action By</th>
+                                <th>Timestamp</th>
+                                <th>Reason</th>
+                                <th>Case ID</th>
+                            </tr>
+                        </thead>
+                        <tbody id="actionsTable">
+                            <tr><td colspan="7" class="text-center text-muted">Waiting for username, user ID or case ID...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Members Tab -->
+        <div id="members" class="tab-content">
+            <div class="center-flex">
+                <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">👥</span>
+                    <span>Member Information</span>
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-input" id="memberSearchInput" placeholder="Search by username or user ID..." onkeyup="searchMembers()">
+                </div>
+                <div class="table-container" id="membersContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Joined</th>
+                                <th>Level</th>
+                                <th>Warnings</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTable">
+                            <tr><td colspan="7" class="text-center text-muted">Waiting for username or user ID...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Member Notes Modal -->
+            <div id="notesModal" class="modal" style="display:none;">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Member Notes - <span id="notesMemberId">-</span></h3>
+                        <button class="modal-close" onclick="closeNotesModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <textarea id="notesTextarea" class="form-input" rows="8" placeholder="Add notes about this member..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" onclick="saveNotes()">Save Notes</button>
+                        <button class="btn btn-secondary" onclick="closeNotesModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Details Modal -->
+    <div id="ticketDetailsModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ticket Details</h3>
+                <button class="modal-close" onclick="closeTicketDetails()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Ticket ID</label>
+                    <div id="ticketDetailId" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">User</label>
+                    <div id="ticketDetailUser" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <div id="ticketDetailStatus" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Priority</label>
+                    <div id="ticketDetailPriority" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Created</label>
+                    <div id="ticketDetailCreated" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reason</label>
+                    <div id="ticketDetailReason" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTicketDetails()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ban Details Modal -->
+    <div id="banDetailsModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ban Details</h3>
+                <button class="modal-close" onclick="closeBanDetails()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">User</label>
+                    <div id="banDetailUser" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ban Reason</label>
+                    <div id="banDetailReason" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Banned By</label>
+                    <div id="banDetailBannedBy" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Banned At</label>
+                    <div id="banDetailBannedAt" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Case ID</label>
+                    <div id="banDetailCaseId" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBanDetails()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeout Details Modal -->
+    <div id="timeoutDetailsModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Timeout Details</h3>
+                <button class="modal-close" onclick="closeTimeoutDetails()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">User</label>
+                    <div id="timeoutDetailUser" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Timeout Reason</label>
+                    <div id="timeoutDetailReason" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Issued By</label>
+                    <div id="timeoutDetailIssuedBy" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Issued At</label>
+                    <div id="timeoutDetailIssuedAt" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Expires At</label>
+                    <div id="timeoutDetailExpiresAt" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Time Remaining</label>
+                    <div id="timeoutDetailRemaining" class="form-input" style="background: var(--bg-secondary);"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeTimeoutDetails()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="warningsDetailsModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Warning Details</h2>
+                <button class="modal-close" onclick="closeWarningsDetails()">&times;</button>
+            </div>
+            <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+                <div style="display: grid; gap: 1rem;">
+                    <div>
+                        <label style="font-weight: 600; color: var(--text-secondary);">User</label>
+                        <div id="warningDetailUser" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 0.375rem; margin-top: 0.25rem;"></div>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; color: var(--text-secondary);">Total Actions</label>
+                        <div id="warningDetailCount" style="background: var(--bg-secondary); padding: 0.5rem; border-radius: 0.375rem; margin-top: 0.25rem;"></div>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; color: var(--text-secondary);">Warning History</label>
+                        <div id="warningDetailsList" style="background: var(--bg-secondary); padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.25rem; max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeWarningsDetails()">Close</button>
+            </div>
+        </div>
+    </div>
+
+            <footer class="page-footer">
+                <div class="footer-links">
+                    <span>© 2026 <strong>Admin Panel</strong></span>
+                    <span class="footer-sep">•</span>
+                    <a href="/changelog">Changelog</a>
+                    <span class="footer-sep">•</span>
+                    <a href="/license">License</a>
+                </div>
+            </footer>
+
+            <script src="/public/version.js"></script>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/public/security.js"></script>
+    <script src="/public/moderator.js"></script>
+    <script>
+        function toggleUserDropdown() {
+            const menu = document.getElementById('userDropdownMenu');
+            const trigger = document.querySelector('.user-dropdown-trigger');
+            menu.classList.toggle('show');
+            trigger.classList.toggle('active');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.user-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                document.getElementById('userDropdownMenu')?.classList.remove('show');
+                document.querySelector('.user-dropdown-trigger')?.classList.remove('active');
+            }
+        });
+
+        // Sync dropdown username/role with main display
+        function syncDropdownInfo() {
+            const username = document.getElementById('userDisplay')?.textContent;
+            const role = document.getElementById('roleBadge')?.textContent;
+            if (username) document.getElementById('dropdownUsername').textContent = username;
+            if (role) document.getElementById('dropdownRole').textContent = role;
+        }
+
+
+        // Load appeals on page load if visible
+        window.addEventListener('load', function() {
+            const appealsTab = document.getElementById('appeals');
+            if (appealsTab && appealsTab.classList.contains('active')) {
+                loadPendingAppeals();
+            }
+        });
+
+        setTimeout(syncDropdownInfo, 500);
+    </script>
+</body>
+</html>

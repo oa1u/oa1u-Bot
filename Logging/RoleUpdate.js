@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log role updates (name, color, permissions changes)
 module.exports = (client) => {
 	client.on("roleUpdate", async(Old, New) => {
         const logs = client.channels.cache.get(serverLogChannelId);

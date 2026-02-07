@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="/public/admin.js?v=5" defer></script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">🎛️ Admin</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link active">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerNavLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="userDisplay">Loading...</span>
+                        <span class="role-badge" id="roleBadge">Admin</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">Admin</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+                            <title>Admin Panel</title>
+        </div>
+    </header>
+
+
+<div class="container">
+        <div class="tabs" id="adminTabs" style="margin-bottom:2.5rem;">
+            <button class="tab active" data-tab="member-management" style="--tab-color:#5b7fff;"><span class="tab-icon">👥</span> <span>Member Management</span></button>
+            <button class="tab" data-tab="appeals" style="--tab-color:#ffd45b;"><span class="tab-icon">📝</span> <span>Appeals</span></button>
+            <button class="tab" data-tab="banned-users" style="--tab-color:#f44336;"><span class="tab-icon">🚫</span> <span>Ban List</span></button>
+        </div>
+        <style>
+        .tabs {
+            display: flex;
+            gap: 2.5rem;
+            border-bottom: 2px solid var(--border-color);
+            margin: 2.5rem 0 2rem 0;
+            padding-left: 0.5rem;
+            align-items: center;
+        }
+        .tab {
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem 0.5rem 1.5rem;
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+        }
+        .tab.active {
+            color: var(--tab-color, #5b7fff);
+            background: var(--bg-card);
+            box-shadow: 0 2px 8px rgba(91,127,255,0.08);
+            border-bottom: 2px solid var(--tab-color, #5b7fff);
+            z-index: 2;
+        }
+        .tab:not(.active):hover {
+            color: var(--tab-color, #5b7fff);
+            background: var(--bg-card-hover);
+        }
+        .tab .tab-icon {
+            font-size: 1.25rem;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        </style>
+        <script>
+        // Enhanced tab system for admin panel
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('#adminTabs .tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    const tabName = tab.getAttribute('data-tab');
+                    tabContents.forEach(tc => {
+                        if (tc.id === tabName) {
+                            tc.classList.add('active');
+                            tc.style.display = '';
+                        } else {
+                            tc.classList.remove('active');
+                            tc.style.display = 'none';
+                        }
+                    });
+                });
+            });
+            // Hide all but the first tab content on load
+            tabContents.forEach((tc, idx) => {
+                if (idx !== 0) tc.style.display = 'none';
+            });
+        });
+        </script>
+
+    <div id="member-management" class="tab-content active">
+        <div class="center-flex">
+            <div class="card">
+            <div class="card-header">
+                <span class="card-header-icon">🔍</span>
+                <span>User Lookup</span>
+            </div>
+            <div style="display: grid; gap: 1rem;">
+                <div>
+                    <label for="userLookupInput" class="form-label">Search by Username or Discord User ID</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="userLookupInput" class="form-input" placeholder="Enter Username or Discord User ID" style="flex: 1;">
+                        <button class="btn btn-primary" onclick="lookupUserDetails()">Search</button>
+                    </div>
+                </div>
+                <div id="userDetailsPanel" style="display: none;">
+                    <div class="user-details-card">
+                        <div class="user-details-grid">
+                            <div class="user-details-section user-info">
+                                <h3><span class="card-header-icon" style="color:var(--color-blue);">👤</span> <span style="color:var(--color-blue);">User Info</span></h3>
+                                <div class="details-row"><span class="details-label">Username:</span> <span id="detailUsername" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Nickname:</span> <span id="detailNickname" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">User ID:</span> <span id="detailUserId" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Joined At:</span> <span id="detailJoinedAt" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Created At:</span> <span id="detailCreatedAt" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Account Age:</span> <span id="detailAccountAge" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Bio:</span> <span id="detailBio" class="details-value">-</span></div>
+                            </div>
+                            <div class="user-details-section moderation-info">
+                                <h3><span class="card-header-icon" style="color:var(--color-red);">⚡</span> <span style="color:var(--color-red);">Moderation Info</span></h3>
+                                <div class="details-row"><span class="details-label">Level:</span> <span id="detailLevel" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">XP:</span> <span id="detailXP" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Warnings:</span> <span id="detailWarnings" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Ban Status:</span> <span id="detailBanStatus" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Ban Reason:</span> <span id="detailBanReason" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Ban Date:</span> <span id="detailBanDate" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Timed Out:</span> <span id="detailTimedOut" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Timeout Reason:</span> <span id="detailTimeoutReason" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Timeout Expires:</span> <span id="detailTimeoutExpires" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Timeout Status:</span> <span id="detailTimeoutStatus" class="details-value">-</span></div>
+                            </div>
+                            <div class="user-details-section other-info">
+                                <h3><span class="card-header-icon" style="color:var(--color-yellow);">📋</span> <span style="color:var(--color-yellow);">Other Info</span></h3>
+                                <div class="details-row"><span class="details-label">Status:</span> <span id="detailStatus" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Flags:</span> <span id="detailFlags" class="details-value">-</span></div>
+                                <div class="details-row"><span class="details-label">Messages:</span> <span id="detailMessages" class="details-value">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(75, 85, 99, 0.2);">
+                            <label style="font-weight: 600; color: var(--text-secondary); font-size: 0.875rem; display: block; margin-bottom: 0.5rem;">Actions</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-warning" onclick="promptWarnUser()">⚠️ Warn</button>
+                                <button id="timeoutButton" class="btn btn-secondary" onclick="promptTimeoutUser()">⏳ Timeout</button>
+                                <button id="untimeoutButton" class="btn btn-success" onclick="promptUntimeoutUser()" style="display:none;">✅ Untimeout</button>
+                                <button id="banButton" class="btn btn-danger" onclick="promptBanUser()">🚫 Ban</button>
+                                <button id="unbanButton" class="btn btn-success" onclick="promptUnbanUser()" style="display:none;">✅ Unban</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="appeals" class="tab-content">
+            <div class="center-flex">
+                <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">👥</span>
+                    <span>Appeals</span>
+                </div>
+            <div class="table-container" id="appealsContainer">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Ban Case ID</th>
+                            <th>Reason</th>
+                            <th>Appeal Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appealsTable">
+                        <tr><td colspan="6" class="text-center text-muted">No appeals found</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="banned-users" class="tab-content">
+        <div class="center-flex">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-header-icon">🚫</span>
+                    <span>Banned Users</span>
+                </div>
+                <div class="table-container" id="bannedUsersContainer">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Username</th>
+                                <th>Ban Reason</th>
+                                <th>Banned By</th>
+                                <th>Banned On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bannedUsersTable">
+                            <tr><td colspan="6" class="text-center text-muted">Loading banned users...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/public/notifications.js" defer></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/version.js"></script>
+    <script>
+        function toggleUserDropdown() {
+            const menu = document.getElementById('userDropdownMenu');
+            const trigger = document.querySelector('.user-dropdown-trigger');
+            menu.classList.toggle('show');
+            trigger.classList.toggle('active');
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.user-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                document.getElementById('userDropdownMenu')?.classList.remove('show');
+                document.querySelector('.user-dropdown-trigger')?.classList.remove('active');
+            }
+        });
+
+        function syncDropdownInfo() {
+            const username = document.getElementById('userDisplay')?.textContent;
+            const role = document.getElementById('roleBadge')?.textContent;
+            if (username) document.getElementById('dropdownUsername').textContent = username;
+            if (role) document.getElementById('dropdownRole').textContent = role;
+        }
+        setTimeout(syncDropdownInfo, 500);
+
+        // Here are the variables we'll use to keep track of all the users and any filters we apply.
+        let allUsers = [];
+        let filteredUsers = [];
+
+        // When you click the users tab, we'll fetch the latest user list.
+        document.addEventListener('DOMContentLoaded', function() {
+            const usersTab = document.getElementById('users');
+            if (usersTab) {
+                const tabButtons = document.querySelectorAll('.tab');
+                tabButtons.forEach(btn => {
+                    if (btn.getAttribute('data-tab') === 'users') {
+                        btn.addEventListener('click', loadUsers);
+                    }
+                });
+            }
+        });
+
+        // Grab every user from the server so we can show them in the table.
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) throw new Error(`Failed to load users: ${response.status}`);
+                
+                const data = await response.json();
+                allUsers = data.users || [];
+                filteredUsers = [...allUsers];
+                
+                updateMemberStats();
+                displayUsers();
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersTable').innerHTML = 
+                    '<tr><td colspan="7" class="text-center text-danger">Failed to load users: ' + escapeHtml(error.message) + '</td></tr>';
+            }
+        }
+
+        // Let people search for users by their username or ID. Makes finding someone way easier.
+        function searchUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            filteredUsers = allUsers.filter(user => {
+                const username = (user.username || '').toLowerCase();
+                const userId = (user.user_id || '').toString();
+                return username.includes(searchTerm) || userId.includes(searchTerm);
+            });
+            
+            applyAllFilters();
+        }
+
+        // Filter users based on how many warnings they have or their level. Helps admins sort things out.
+        function filterUsers() {
+            applyAllFilters();
+        }
+
+        // Apply all the filters and sorting options so the user list is just how you want it.
+        function applyAllFilters() {
+            const warningFilter = document.getElementById('warningFilter')?.value;
+            const levelFilter = document.getElementById('levelFilter')?.value;
+            
+            filteredUsers = allUsers.filter(user => {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const username = (user.username || '').toLowerCase();
+                const userId = (user.user_id || '').toString();
+                
+                // Search filter
+                const matchesSearch = username.includes(searchTerm) || userId.includes(searchTerm);
+                
+                // Warning filter
+                let matchesWarnings = true;
+                if (warningFilter) {
+                    const warnings = user.warnings || 0;
+                    if (warningFilter === '0') matchesWarnings = warnings === 0;
+                    else if (warningFilter === '1-2') matchesWarnings = warnings >= 1 && warnings <= 2;
+                    else if (warningFilter === '3-5') matchesWarnings = warnings >= 3 && warnings <= 5;
+                    else if (warningFilter === '6+') matchesWarnings = warnings >= 6;
+                }
+                
+                // Level filter
+                let matchesLevel = true;
+                if (levelFilter) {
+                    const level = user.level || 0;
+                    if (levelFilter === '1-10') matchesLevel = level >= 1 && level <= 10;
+                    else if (levelFilter === '11-25') matchesLevel = level >= 11 && level <= 25;
+                    else if (levelFilter === '26-50') matchesLevel = level >= 26 && level <= 50;
+                    else if (levelFilter === '51+') matchesLevel = level >= 51;
+                }
+                
+                return matchesSearch && matchesWarnings && matchesLevel;
+            });
+            
+            sortUsers();
+        }
+
+        // Sort users
+        function sortUsers() {
+            const sortBy = document.getElementById('sortBy')?.value || 'username';
+            
+            filteredUsers.sort((a, b) => {
+                if (sortBy === 'username') {
+                    return (a.username || '').localeCompare(b.username || '');
+                } else if (sortBy === 'warnings-desc') {
+                    return (b.warnings || 0) - (a.warnings || 0);
+                } else if (sortBy === 'level-desc') {
+                    return (b.level || 0) - (a.level || 0);
+                } else if (sortBy === 'xp-desc') {
+                    return (b.xp || 0) - (a.xp || 0);
+                }
+                return 0;
+            });
+            
+            displayUsers();
+        }
+
+        // Display filtered users in table
+        function displayUsers() {
+            const tbody = document.getElementById('usersTable');
+            
+            if (filteredUsers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No users found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = filteredUsers.map(user => {
+                const warnings = user.warnings || 0;
+                const warningStatus = warnings === 0 ? '✅ Clean' : 
+                                     warnings <= 2 ? '⚠️ Low' :
+                                     warnings <= 5 ? '🟡 Medium' : '🔴 High';
+                
+                return `
+                    <tr>
+                        <td><code>${user.user_id}</code></td>
+                        <td>${escapeHtml(user.username || 'Unknown')}</td>
+                        <td>${warningStatus}</td>
+                        <td><span class="badge">${warnings}</span></td>
+                        <td><strong>Level ${user.level || 0}</strong></td>
+                        <td>${formatNumber(user.xp || 0)} XP</td>
+                        <td>
+                            <div class="btn-group-small">
+                                <button class="btn btn-sm btn-primary" onclick="viewUserDetails('${user.user_id}')">View</button>
+                                <button class="btn btn-sm btn-warning" onclick="warnUser('${user.user_id}')">Warn</button>
+                                ${user.is_banned ? `<button class="btn btn-sm btn-success" onclick="unbanUser('${user.user_id}')">Unban</button>` : `<button class="btn btn-sm btn-danger" onclick="banUser('${user.user_id}')">Ban</button>`}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Update member statistics
+        function updateMemberStats() {
+            const totalMembers = allUsers.length;
+            const warnedMembers = allUsers.filter(u => (u.warnings || 0) > 0).length;
+            const avgLevel = totalMembers > 0 ? 
+                (allUsers.reduce((sum, u) => sum + (u.level || 0), 0) / totalMembers).toFixed(1) : 0;
+            const topLevel = Math.max(...allUsers.map(u => u.level || 0), 0);
+            
+            document.getElementById('totalMembers').textContent = formatNumber(totalMembers);
+            document.getElementById('warnedMembers').textContent = warnedMembers;
+            document.getElementById('avgLevel').textContent = avgLevel;
+            document.getElementById('topLevel').textContent = topLevel;
+        }
+
+        // View user details
+        async function viewUserDetails(userId) {
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load user details');
+                
+                const user = await response.json();
+                
+                showModal(`
+                    <div class="user-detail-modal">
+                        <h3>${escapeHtml(user.username || 'Unknown User')}</h3>
+                        <div class="detail-grid">
+                            <div><strong>User ID:</strong> ${user.user_id}</div>
+                            <div><strong>Username:</strong> ${escapeHtml(user.username || '-')}</div>
+                            <div><strong>Level:</strong> ${user.level || 0}</div>
+                            <div><strong>XP:</strong> ${formatNumber(user.xp || 0)}</div>
+                            <div><strong>Warnings:</strong> <span class="badge">${user.warnings || 0}</span></div>
+                            <div><strong>Joined:</strong> ${new Date(user.joined_at).toLocaleDateString()}</div>
+                            <div><strong>Ban Status:</strong> ${user.is_banned ? '🔴 BANNED' : '✅ Active'}</div>
+                            <div><strong>Messages:</strong> ${formatNumber(user.message_count || 0)}</div>
+                        </div>
+                        <div style="margin-top: 1.5rem;">
+                            <button class="btn btn-warning" onclick="warnUser('${user.user_id}'); closeModal();">Warn User</button>
+                            ${user.is_banned ? `<button class="btn btn-success" onclick="unbanUser('${user.user_id}'); closeModal();">Unban User</button>` : `<button class="btn btn-danger" onclick="banUser('${user.user_id}'); closeModal();">Ban User</button>`}
+                        </div>
+                    </div>
+                `, 'User Details');
+            } catch (error) {
+                console.error('Error loading user details:', error);
+                showNotification('Failed to load user details', 'error');
+            }
+        }
+
+        // Warn user
+        async function warnUser(userId) {
+            const reason = prompt('Enter warning reason:');
+            if (!reason) return;
+            
+            try {
+                const response = await fetch('/api/warn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, reason })
+                });
+                
+                if (!response.ok) throw new Error('Failed to warn user');
+                
+                showNotification('User warned successfully', 'success');
+                loadUsers(); // Refresh user list
+            } catch (error) {
+                console.error('Error warning user:', error);
+                showNotification('Failed to warn user', 'error');
+            }
+        }
+
+        // Ban user
+        async function banUser(userId) {
+            const reason = prompt('Enter ban reason:');
+            if (!reason) return;
+            
+            if (!confirm('Are you sure you want to ban this user?')) return;
+            
+            try {
+                const response = await fetch('/api/ban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, reason })
+                });
+                
+                if (!response.ok) throw new Error('Failed to ban user');
+                
+                showNotification('User banned successfully', 'success');
+                loadUsers(); // Refresh user list
+            } catch (error) {
+                console.error('Error banning user:', error);
+                showNotification('Failed to ban user', 'error');
+            }
+        }
+
+        // Unban user
+        async function unbanUser(userId) {
+            if (!confirm('Are you sure you want to unban this user?')) return;
+            
+            try {
+                const response = await fetch(`/api/banned/${userId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) throw new Error('Failed to unban user');
+                
+                showNotification('User unbanned successfully', 'success');
+                loadUsers(); // Refresh user list
+            } catch (error) {
+                console.error('Error unbanning user:', error);
+                showNotification('Failed to unban user', 'error');
+            }
+        }
+
+        // Helper functions
+        function formatNumber(num) {
+            return new Intl.NumberFormat().format(num);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showModal(content, title) {
+            let modal = document.getElementById('customModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'customModal';
+                modal.className = 'modal';
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2 id="modalTitle"></h2>
+                            <button onclick="closeModal()" class="btn-close">&times;</button>
+                        </div>
+                        <div id="modalBody"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalBody').innerHTML = content;
+            modal.style.display = 'block';
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('customModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+                color: white;
+                border-radius: 4px;
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+        
+        // Ensure loadUsers is globally accessible
+        window.loadUsers = loadUsers;
+
+        // User Lookup Function
+        async function lookupUserDetails() {
+            const userId = document.getElementById('userLookupInput').value.trim();
+            
+            if (!userId) {
+                showNotification('Please enter a Discord User ID', 'error');
+                return;
+            }
+            
+            if (!/^\d{17,19}$/.test(userId)) {
+                showNotification('Invalid Discord User ID format', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showNotification('User not found in database', 'error');
+                        document.getElementById('userDetailsPanel').style.display = 'none';
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return;
+                }
+                
+                const user = await response.json();
+                displayUserDetails(user);
+                document.getElementById('userDetailsPanel').style.display = 'block';
+                showNotification('User found', 'success');
+            } catch (error) {
+                console.error('Error looking up user:', error);
+                showNotification('Failed to lookup user: ' + error.message, 'error');
+                document.getElementById('userDetailsPanel').style.display = 'none';
+            }
+        }
+
+        function displayUserDetails(user) {
+            const warnings = user.warnings || 0;
+            
+            // Calculate account age from discord id
+            const discordEpoch = 1420070400000; 
+            const timestamp = (BigInt(user.user_id) >> 22n) + BigInt(discordEpoch);
+            const accountCreated = new Date(Number(timestamp));
+            const daysSinceCreation = Math.floor((Date.now() - accountCreated.getTime()) / (1000 * 60 * 60 * 24));
+            const accountAge = daysSinceCreation >= 365 
+                ? `${Math.floor(daysSinceCreation / 365)} year${Math.floor(daysSinceCreation / 365) !== 1 ? 's' : ''}`
+                : `${daysSinceCreation} day${daysSinceCreation !== 1 ? 's' : ''}`;
+            
+            document.getElementById('detailUsername').textContent = escapeHtml(user.username || 'Unknown');
+            document.getElementById('detailUserId').textContent = user.user_id;
+            document.getElementById('detailLevel').innerHTML = `<span style="background: var(--accent-primary); color: white; padding: 0.25rem 0.75rem; border-radius: 0.25rem;">${user.level || 0}</span>`;
+            document.getElementById('detailXP').innerHTML = `<strong>${formatNumber(user.xp || 0)}</strong> XP`;
+            
+            const warningBg = warnings === 0 ? '#4CAF50' : warnings <= 2 ? '#FFC107' : warnings <= 5 ? '#FF9800' : '#f44336';
+            document.getElementById('detailWarnings').innerHTML = `<span style="background: ${warningBg}; color: white; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-weight: 600;">${warnings} Warning${warnings !== 1 ? 's' : ''}</span>`;
+            
+            const banStatus = user.is_banned ? '🔴 Banned' : '✅ Not Banned';
+            const banBg = user.is_banned ? '#f44336' : '#4CAF50';
+            document.getElementById('detailBanStatus').innerHTML = `<span style="background: ${banBg}; color: white; padding: 0.25rem 0.75rem; border-radius: 0.25rem;">${banStatus}</span>`;
+            
+            document.getElementById('detailAccountAge').innerHTML = `<strong>${accountAge}</strong> old (${accountCreated.toLocaleDateString()})`;
+            document.getElementById('detailMessages').innerHTML = `<strong>${formatNumber(user.messages || 0)}</strong> messages`;
+            
+            // Store current user ID for action buttons
+            window.currentLookupUserId = user.user_id;
+        }
+
+        function promptWarnUser() {
+            if (!window.currentLookupUserId) return;
+            const reason = prompt('Enter warning reason:');
+            if (!reason) return;
+            warnUserAction(window.currentLookupUserId, reason);
+        }
+
+        function promptBanUser() {
+            if (!window.currentLookupUserId) return;
+            const reason = prompt('Enter ban reason:');
+            if (!reason) return;
+            if (!confirm('Are you sure you want to ban this user?')) return;
+            banUserAction(window.currentLookupUserId, reason);
+        }
+
+        async function warnUserAction(userId, reason) {
+            try {
+                const response = await fetch('/api/warn', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, reason })
+                });
+                
+                if (!response.ok) throw new Error('Failed to warn user');
+                
+                showNotification('User warned successfully', 'success');
+                // Refresh the lookup
+                lookupUserDetails();
+            } catch (error) {
+                console.error('Error warning user:', error);
+                showNotification('Failed to warn user: ' + error.message, 'error');
+            }
+        }
+
+        async function banUserAction(userId, reason) {
+            try {
+                const response = await fetch('/api/ban', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, reason })
+                });
+                
+                if (!response.ok) throw new Error('Failed to ban user');
+                
+                showNotification('User banned successfully', 'success');
+                // Refresh the lookup
+                lookupUserDetails();
+            } catch (error) {
+                console.error('Error banning user:', error);
+                showNotification('Failed to ban user: ' + error.message, 'error');
+            }
+        }
+
+        // Allow Enter key to trigger search
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('userLookupInput');
+            if (input) {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        lookupUserDetails();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

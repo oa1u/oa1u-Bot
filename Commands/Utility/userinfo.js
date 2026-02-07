@@ -3,6 +3,8 @@ const JSONDatabase = require('../../Functions/Database');
 const { SlashCommandBuilder, EmbedBuilder } = require('@discordjs/builders');
 require("moment-duration-format");
 
+// Displays detailed user information
+// Includes roles, join date, account age, etc.
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('userinfo')

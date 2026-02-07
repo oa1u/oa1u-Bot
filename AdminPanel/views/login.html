@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Login</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="/public/login.js" defer></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .form-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 2rem 1rem;
+        }
+        
+        .page-footer {
+            margin-top: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="auth-card">
+            <h1 class="form-title">🎛️ Admin Panel</h1>
+            <p class="form-subtitle">Sign in to access your dashboard</p>
+
+            <div id="errorMsg" class="message error hidden"></div>
+            <div id="successMsg" class="message success hidden"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="Enter your username" required autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+
+                <button type="button" id="loginBtn" class="btn btn-primary btn-full">Sign In</button>
+            </form>
+
+            <div class="text-center mt-3">
+                <p class="text-secondary">Don't have an account? <a href="/register" id="registerLink">Create one here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Logging in...</p>
+    </div>
+
+    <footer class="page-footer">
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+
+    <script src="/public/version.js"></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/version.js"></script>
+    <script src="/public/login.js"></script>
+</body>
+</html>

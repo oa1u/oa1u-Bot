@@ -1,14 +1,19 @@
-// Get member from mention, ID, or username
+// Gets a member from a mention, ID, or username.
+// Handles different input formats like <@123>, 123456, or username.
+// Makes commands more flexible for users.
+
 async function getMemberFromMention(guild, input) {
     if (!guild) {
         throw new Error('Guild is required');
     }
-    if (!input || typeof input !== 'string') {
+    if (!input || typeof input !== 'string' || input.trim().length === 0) {
         return null;
     }
 
-    // Try mention format: <@!123456> or <@123456>
-    const mentionMatch = input.match(/^<@!?(\d+)>$/);
+    const trimmedInput = input.trim();
+
+    // Try to match mention format: <@!123456> or <@123456>
+    const mentionMatch = trimmedInput.match(/^<@!?(\d+)>$/);
     if (mentionMatch) {
         const id = mentionMatch[1];
         try {
@@ -18,17 +23,17 @@ async function getMemberFromMention(guild, input) {
         }
     }
 
-    // Try raw ID
-    if (/^\d+$/.test(input)) {
+    // Try raw ID (should be 18-20 digits).
+    if (/^\d{18,20}$/.test(trimmedInput)) {
         try {
-            return await guild.members.fetch(input);
+            return await guild.members.fetch(trimmedInput);
         } catch (err) {
             return null;
         }
     }
 
-    // Try username or display name
-    const lowerInput = input.toLowerCase();
+    // Try exact username or display name match (case-insensitive).
+    const lowerInput = trimmedInput.toLowerCase();
     let member = guild.members.cache.find(m => 
         m.user.username.toLowerCase() === lowerInput ||
         m.displayName.toLowerCase() === lowerInput
@@ -36,13 +41,20 @@ async function getMemberFromMention(guild, input) {
 
     if (member) return member;
 
-    // Try fuzzy search (username contains input)
-    member = guild.members.cache.find(m =>
-        m.user.username.toLowerCase().includes(lowerInput) ||
-        m.displayName.toLowerCase().includes(lowerInput)
-    );
+    // Try fuzzy search if input is at least 3 characters (so we don't match too broadly).
+    if (trimmedInput.length >= 3) {
+        member = guild.members.cache.find(m =>
+            m.user.username.toLowerCase().includes(lowerInput) ||
+            m.displayName.toLowerCase().includes(lowerInput)
+        );
+        
+        if (member) {
+            console.log(`[GetMemberFromMention] Fuzzy match: '${trimmedInput}' matched member ${member.user.tag}`);
+            return member;
+        }
+    }
 
-    return member || null;
+    return null;
 }
 
 // Get user from mention or ID
@@ -50,12 +62,14 @@ async function getUserFromInput(client, input) {
     if (!client) {
         throw new Error('Client is required');
     }
-    if (!input || typeof input !== 'string') {
+    if (!input || typeof input !== 'string' || input.trim().length === 0) {
         return null;
     }
 
+    const trimmedInput = input.trim();
+
     // Try mention format
-    const mentionMatch = input.match(/^<@!?(\d+)>$/);
+    const mentionMatch = trimmedInput.match(/^<@!?(\d+)>$/);
     if (mentionMatch) {
         try {
             return await client.users.fetch(mentionMatch[1]);
@@ -64,10 +78,10 @@ async function getUserFromInput(client, input) {
         }
     }
 
-    // Try raw ID
-    if (/^\d+$/.test(input)) {
+    // Try raw ID (must be 18-20 digits)
+    if (/^\d{18,20}$/.test(trimmedInput)) {
         try {
-            return await client.users.fetch(input);
+            return await client.users.fetch(trimmedInput);
         } catch (err) {
             return null;
         }
@@ -94,13 +108,7 @@ function getMembersWithRole(guild, roleInput) {
     return guild.members.cache.filter(m => m.roles.cache.has(roleId));
 }
 
-/**
- * Add role to a member
- * @param {GuildMember} member - The member
- * @param {string|Role} roleInput - Role ID or Role object
- * @param {string} reason - Audit log reason
- * @returns {Promise<GuildMember|null>} Updated member or null if failed
- */
+// Add role to a member
 async function addRoleToMember(member, roleInput, reason = 'No reason provided') {
     if (!member) return null;
     
@@ -116,13 +124,7 @@ async function addRoleToMember(member, roleInput, reason = 'No reason provided')
     }
 }
 
-/**
- * Remove role from a member
- * @param {GuildMember} member - The member
- * @param {string|Role} roleInput - Role ID or Role object
- * @param {string} reason - Audit log reason
- * @returns {Promise<GuildMember|null>} Updated member or null if failed
- */
+// Remove role from a member
 async function removeRoleFromMember(member, roleInput, reason = 'No reason provided') {
     if (!member) return null;
     
@@ -138,11 +140,7 @@ async function removeRoleFromMember(member, roleInput, reason = 'No reason provi
     }
 }
 
-/**
- * Check if a member has elevated permissions in the guild
- * @param {GuildMember} member - The member to check
- * @returns {boolean} True if member is mod/admin
- */
+// Check if a member has elevated permissions in the guild
 function isModOrAdmin(member) {
     if (!member) return false;
     return member.permissions.has('ModerateMembers') || member.permissions.has('Administrator');

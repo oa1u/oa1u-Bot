@@ -5,8 +5,10 @@ const { MessageFlags } = require('discord.js');
 const { generateCaseId } = require("../../Events/caseId");
 const { sendErrorReply, sendSuccessReply, createModerationEmbed } = require("../../Functions/EmbedBuilders");
 const { canModerateMember, addCase, sendModerationDM, logModerationAction } = require("../../Functions/ModerationHelper");
-const DatabaseManager = require('../../Functions/DatabaseManager');
+const DatabaseManager = require('../../Functions/MySQLDatabaseManager');
+const AdminPanelHelper = require("../../Functions/AdminPanelHelper");
 
+// Kicks a user from the server (they can come back with an invite)
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('kick')
@@ -30,12 +32,14 @@ module.exports = {
     const targetUser = interaction.options.getUser('user');
     const reasonInput = interaction.options.getString('reason');
     
+    // See if the reason is a preset or something custom
     const reason = DatabaseManager.getResolvedReason(reasonInput);
 
     if (!await canModerateMember(interaction, targetUser, 'kick')) {
       return;
     }
 
+    // Make sure the user is still in the server
     const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
     if (!targetMember) {
       await sendErrorReply(
@@ -46,10 +50,10 @@ module.exports = {
       return;
     }
 
-    // Generate case ID
+    // Make a new case ID for this kick
     const caseID = generateCaseId('KICK');
 
-    // Create logging embed
+    // Put together the log message for this action
     const logEmbed = createModerationEmbed({
       action: '👢 Kick',
       target: targetUser,
@@ -61,32 +65,50 @@ module.exports = {
 
     // DM the user
     const dmEmbed = new EmbedBuilder()
-      .setTitle('👢 Kicked')
+      .setTitle('👢 Server Kick Notice')
       .setColor(0xFAA61A)
-      .setDescription(`You were kicked from **${interaction.guild.name}**`)
+      .setDescription(`You have been removed from **${interaction.guild.name}** by a moderator.`)
       .addFields(
-        { name: '📝 Reason', value: reason, inline: false },
-        { name: '🔑 Case ID', value: `\`${caseID}\``, inline: true },
-        { name: '⚡ Note', value: 'Don\'t repeat this behavior!', inline: true }
+        { name: 'Action Type', value: '**Kick**', inline: true },
+        { name: 'Effective Date', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true },
+        { name: 'Reason', value: `\`\`\`${reason}\`\`\``, inline: false },
+        { name: 'Case ID', value: `\`${caseID}\``, inline: true },
+        { name: 'Moderator', value: `\`${interaction.user.tag}\``, inline: true },
+        { name: 'What Now?', value: 'You can rejoin the server through an invite link. Review the reason to avoid this in the future.', inline: false }
       )
+      .setFooter({ text: `${interaction.guild.name} • Moderation System` })
       .setTimestamp();
 
     const dmSent = await sendModerationDM(targetUser, dmEmbed);
 
-    // Log the action
+    // Log it in the mod log channel
     await logModerationAction(interaction, logEmbed);
 
-    // Add to database
+    // Save to database for tracking
     addCase(targetUser.id, caseID, {
       moderator: interaction.user.id,
+      moderatorTag: interaction.user.username,
+      userTag: targetUser.username,
       reason: `(kicked) - ${reason}`,
       date: moment(Date.now()).format('LL'),
       type: 'KICK'
     });
 
-    // Perform the kick
+    // Actually kick them now
     try {
       await targetMember.kick(reason);
+
+      // Save kick to kicks table
+      await AdminPanelHelper.addKick({
+        userId: targetUser.id,
+        caseId: caseID,
+        username: targetUser.username,
+        reason: reason,
+        kickedBy: interaction.user.id,
+        kickedByName: interaction.user.username,
+        kickedBySource: 'discord',
+        kickedAt: Date.now()
+      });
       
       // Send success response
       await sendSuccessReply(

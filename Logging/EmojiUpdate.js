@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log emoji update events (name changes)
 module.exports = (client) => {
 	client.on("emojiUpdate", async(oldEmoji, newEmoji) => {
         const logs = client.channels.cache.get(serverLogChannelId);
@@ -20,7 +21,7 @@ module.exports = (client) => {
             fields.push({ name: "Emoji ID", value: `\`${oldEmoji.id}\``, inline: true });
             fields.push({ name: "Emoji", value: newEmoji.toString(), inline: true });
             embed.addFields(fields);
-            embed.setThumbnail(newEmoji.url);
+            embed.setThumbnail(newEmoji.imageURL());
             embed.setTimestamp().setFooter({ text: "Emoji Updated" });
             return logs.send({embeds: [embed]});
     })

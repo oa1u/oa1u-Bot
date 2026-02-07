@@ -1,6 +1,7 @@
 const { EmbedBuilder, ChannelType } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log channel deletion events
 module.exports = (client) => {
 	client.on("channelDelete", async(channel) => {
     const logs = client.channels.cache.get(serverLogChannelId);

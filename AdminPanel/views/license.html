@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License - Bot Admin Panel</title>
+    <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">📄 License</div>
+            <nav class="header-nav">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/moderator" class="nav-link" id="moderatorLink">Moderator</a>
+                <a href="/admin" class="nav-link" id="adminLink">Admin</a>
+                <a href="/owner" class="nav-link" id="ownerLink">Owner</a>
+            </nav>
+            <div class="user-info">
+                <div class="user-dropdown">
+                    <div class="user-dropdown-trigger" onclick="toggleUserDropdown()">
+                        <span class="username" id="headerUsername">Loading...</span>
+                        <span class="role-badge" id="headerRole">user</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="user-dropdown-menu" id="userDropdownMenu">
+                        <div class="user-dropdown-header">
+                            <span class="username" id="dropdownUsername">Loading...</span>
+                            <span class="role-badge" id="dropdownRole">user</span>
+                        </div>
+                        <a href="/profile">👤 My Profile</a>
+                        <a href="/features">✨ Features</a>
+                        <a href="/faq">❓ FAQ</a>
+                        <div class="user-dropdown-divider"></div>
+                        <button onclick="logout()">🚪 Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <div class="container">
+        <div class="card" style="max-width: 700px; margin: 2rem auto; padding: 2rem 2.5rem; background: var(--bg-card, #23283a); border-radius: 1rem; box-shadow: 0 4px 24px 0 #000a;">
+            <h1 style="margin-bottom: 0.5rem;"><span class="icon">📄</span> License</h1>
+            <div class="subtitle" style="margin-bottom: 1.5rem; color: var(--text-secondary);">Open Source License Information</div>
+            <h2 style="margin-top: 0;">GNU GENERAL PUBLIC LICENSE</h2>
+            <p style="margin-bottom: 1.25rem;">This bot is open source and distributed under the GNU General Public License v3.0:</p>
+            <pre style="background:#23283a;color:#cfd6e6;padding:1.25em 1.5em;border-radius:8px;overflow-x:auto;max-height:400px;box-shadow:0 2px 8px #0003;font-size:1.05em;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:1.5rem;">
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2026 Admin Panel Developers
+
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+
+... (full GPLv3 text should be included here, truncated for brevity) ...
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+                </pre>
+                </pre>
+                <p style="margin-bottom: 0.5rem;">For more details, see the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank">GNU GPL v3 License</a> or the project's <a id="githubLicensePageLink" href="#" target="_blank">GitHub repository</a>.</p>
+            </div>
+    </div>
+    <footer class="page-footer">
+                <script>
+                fetch('/Config/main.json')
+                    .then(res => res.json())
+                    .then(cfg => {
+                        const link = cfg.githublink || 'https://github.com/oa1u/Sentinel';
+                        const githubLicensePageLink = document.getElementById('githubLicensePageLink');
+                        if (githubLicensePageLink) {
+                            githubLicensePageLink.href = link;
+                        }
+                    });
+                </script>
+        <div class="footer-links">
+            <span>© 2026 <strong>Admin Panel</strong></span>
+            <span class="footer-sep">•</span>
+            <a href="/changelog">Changelog</a>
+            <span class="footer-sep">•</span>
+            <a href="/license">License</a>
+        </div>
+    </footer>
+
+    <script src="/public/version.js"></script>
+    <script src="/public/shared.js"></script>
+    <script src="/public/version.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        function toggleUserDropdown() {
+            const menu = document.getElementById('userDropdownMenu');
+            const trigger = document.querySelector('.user-dropdown-trigger');
+            if (menu && trigger) {
+                menu.classList.toggle('show');
+                trigger.classList.toggle('active');
+            }
+        }
+
+        document.addEventListener('click', function(event) {
+            const dropdown = document.querySelector('.user-dropdown');
+            if (dropdown && !dropdown.contains(event.target)) {
+                const menu = document.getElementById('userDropdownMenu');
+                const trigger = document.querySelector('.user-dropdown-trigger');
+                if (menu) menu.classList.remove('show');
+                if (trigger) trigger.classList.remove('active');
+            }
+        });
+
+        // Fetch account info and update username/role
+        async function updateAccountInfo() {
+            try {
+                let api = window.api || (window.AdminPanel && window.AdminPanel.api);
+                if (!api && window.AdminPanel) api = window.AdminPanel.api;
+                if (api && typeof api.getAccountInfo === 'function') {
+                    const accountInfo = await api.getAccountInfo();
+                    if (accountInfo) {
+                        document.getElementById('headerUsername').textContent = accountInfo.username || 'User';
+                        document.getElementById('headerRole').textContent = (accountInfo.role || 'User').toUpperCase();
+                        document.getElementById('dropdownUsername').textContent = accountInfo.username || 'User';
+                        document.getElementById('dropdownRole').textContent = (accountInfo.role || 'User').toUpperCase();
+                    }
+                }
+            } catch (err) {
+                // Fallback: leave as Loading...
+            }
+        }
+        document.addEventListener('DOMContentLoaded', updateAccountInfo);
+        </script>
+</body>
+</html>

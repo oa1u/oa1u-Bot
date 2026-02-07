@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { serverLogChannelId } = require("../Config/constants/channel.json");
 
+// Log role creation events
 module.exports = (client) => {
 	client.on("roleCreate", async(role) => {
     const logs = client.channels.cache.get(serverLogChannelId);
@@ -16,7 +17,7 @@ module.exports = (client) => {
                 { name: "Hoisted", value: role.hoist ? "Yes (Displayed separately)" : "No", inline: true },
                 { name: "Mentionable", value: role.mentionable ? "Yes" : "No", inline: true },
                 { name: "Position", value: role.position.toString(), inline: true },
-                { name: "Members", value: role.members.size.toString(), inline: true }
+                { name: "Members", value: role.members.size.toString(), inline: true } // How many people have this role already
             )
             .setTimestamp()
             .setFooter({ text: "Role Created" });
